@@ -52,7 +52,9 @@ export function DocumentsPanel({
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="space-y-2 lg:col-span-1 max-h-[60vh] overflow-y-auto scrollbar-thin">
-          {docs.map((doc) => (
+          {docs.map((doc) => {
+            const isActive = active?.id === doc.id;
+            return (
             <button
               key={doc.id}
               onClick={() => {
@@ -62,24 +64,32 @@ export function DocumentsPanel({
                 }
               }}
               className={cn(
-                "w-full text-left glass-panel p-3 transition-colors",
-                active?.id === doc.id && "border-amber-500/30",
-                !doc.available && "opacity-50 cursor-not-allowed"
+                "w-full text-left p-3 rounded-xl border transition-all",
+                isActive
+                  ? "bg-amber-500/15 border-amber-500/50 ring-1 ring-amber-500/30 shadow-[inset_3px_0_0_0_rgb(245,158,11)]"
+                  : "glass-panel border-transparent hover:bg-white/[0.04] hover:border-white/10",
+                !doc.available && "opacity-50 cursor-not-allowed",
+                doc.available && !isActive && "cursor-pointer"
               )}
             >
               <div className="flex items-center gap-2">
                 {doc.available ? (
-                  <FileText className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  <FileText className={cn("w-4 h-4 flex-shrink-0", isActive ? "text-amber-300" : "text-amber-400")} />
                 ) : (
                   <Lock className="w-4 h-4 text-slate-500 flex-shrink-0" />
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{doc.title}</p>
-                  <p className="text-[10px] font-mono text-slate-500">{doc.referenceNumber}</p>
+                  <p className={cn("text-sm font-medium truncate", isActive ? "text-amber-100" : "text-slate-200")}>
+                    {doc.title}
+                  </p>
+                  <p className={cn("text-[10px] font-mono", isActive ? "text-amber-400/70" : "text-slate-500")}>
+                    {doc.referenceNumber}
+                  </p>
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
 
         {active?.available && (
