@@ -88,7 +88,7 @@ export default function CasesPage() {
                       <Link
                         href={`/investigate/${c.id}`}
                         onClick={() => handlePlay(c.id, done)}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-500/90 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-primary text-sm"
                       >
                         {done ? (
                           <><RotateCcw className="w-3.5 h-3.5" /> Replay Case</>
@@ -100,7 +100,7 @@ export default function CasesPage() {
                         <Link
                           href={`/investigate/${c.id}`}
                           onClick={() => startCase(c.id)}
-                          className="inline-flex px-5 py-2.5 rounded-lg glass-panel text-sm text-slate-300 hover:bg-white/10"
+                          className="inline-flex px-5 py-2.5 rounded-xl btn-ghost text-sm"
                         >
                           Review ({score}%)
                         </Link>

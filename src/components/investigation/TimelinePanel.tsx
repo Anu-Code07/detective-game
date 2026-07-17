@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Clock } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PanelHeader } from "@/components/ui/PanelHeader";
 import { cn } from "@/lib/utils";
 
 export function TimelinePanel({
@@ -22,8 +23,11 @@ export function TimelinePanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Investigation Timeline</h2>
-      <p className="text-sm text-slate-400">Conflicts are highlighted. Mark contradictions you uncover.</p>
+      <PanelHeader
+        icon={Clock}
+        title="Investigation Timeline"
+        subtitle="Conflicts are highlighted. Flag contradictions you uncover during interrogation."
+      />
 
       <div className="relative pl-8 space-y-4 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-px before:bg-white/10">
         {caseData.timeline.map((event) => {

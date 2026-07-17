@@ -14,8 +14,19 @@ import {
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { Network, User, Paperclip, Clock } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+
+function nodeLabel(icon: React.ReactNode, text: string) {
+  return (
+    <div className="flex items-center gap-1.5 max-w-[140px]">
+      {icon}
+      <span className="truncate text-[11px] leading-tight">{text}</span>
+    </div>
+  );
+}
 
 export function CaseBoardPanel({
   caseData,
@@ -40,7 +51,7 @@ export function CaseBoardPanel({
       nodes.push({
         id: s.id,
         position: { x: 50 + i * 180, y: 50 },
-        data: { label: `👤 ${s.name}` },
+        data: { label: nodeLabel(<User className="w-3 h-3 text-amber-400 flex-shrink-0" />, s.name) },
         style: { background: "#1a2540", border: "1px solid #f59e0b40", color: "#e2e8f0", borderRadius: 8, padding: 8, fontSize: 12 },
       });
     });
@@ -50,7 +61,7 @@ export function CaseBoardPanel({
         nodes.push({
           id: e.id,
           position: { x: 80 + (i % 3) * 200, y: 200 + Math.floor(i / 3) * 100 },
-          data: { label: `📎 ${e.title}` },
+          data: { label: nodeLabel(<Paperclip className="w-3 h-3 text-blue-400 flex-shrink-0" />, e.title) },
           style: { background: "#121a2e", border: "1px solid #3b82f640", color: "#94a3b8", borderRadius: 8, padding: 8, fontSize: 11, maxWidth: 160 },
         });
       });
@@ -60,7 +71,7 @@ export function CaseBoardPanel({
         nodes.push({
           id: t.id,
           position: { x: 100 + i * 160, y: 400 },
-          data: { label: `⏱ ${t.title}` },
+          data: { label: nodeLabel(<Clock className="w-3 h-3 text-purple-400 flex-shrink-0" />, t.title) },
           style: { background: "#0c1220", border: "1px solid #a855f740", color: "#c4b5fd", borderRadius: 8, padding: 8, fontSize: 11 },
         });
       });
@@ -95,10 +106,11 @@ export function CaseBoardPanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Case Board</h2>
-      <p className="text-sm text-slate-400">
-        Drag to connect evidence, people, and events. Connections are saved. AI never confirms guilt.
-      </p>
+      <PanelHeader
+        icon={Network}
+        title="Case Board"
+        subtitle="Drag to connect evidence, people, and events. Connections are saved — the AI never confirms guilt."
+      />
       <div className="h-[min(500px,60vh)] sm:h-[500px] rounded-xl border border-white/10 overflow-hidden bg-[#080c16] touch-pan-x touch-pan-y">
         <ReactFlow
           nodes={nodes}

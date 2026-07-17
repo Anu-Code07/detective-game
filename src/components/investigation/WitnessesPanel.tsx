@@ -1,18 +1,38 @@
 import type { InvestigationCase } from "@/types/case";
-import { Eye } from "lucide-react";
+import { MessageSquare } from "lucide-react";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+import { DossierCard } from "@/components/ui/DossierCard";
+import { cn } from "@/lib/utils";
 
 export function WitnessesPanel({ caseData }: { caseData: InvestigationCase }) {
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Witnesses</h2>
-      <p className="text-sm text-slate-400">Witnesses are imperfect. Compare testimonies carefully.</p>
+      <PanelHeader
+        icon={MessageSquare}
+        title="Witness Files"
+        subtitle="Witnesses are imperfect. Compare testimonies carefully — reliability varies."
+      />
       <div className="grid md:grid-cols-2 gap-4">
         {caseData.witnesses.map((w) => (
-          <div key={w.id} className="glass-panel p-5">
+          <DossierCard
+            key={w.id}
+            name={w.name}
+            subtitle={w.occupation}
+            role="witness"
+            accent="blue"
+          >
             <div className="flex items-center gap-2 mb-3">
-              <Eye className="w-4 h-4 text-blue-400" />
-              <h3 className="font-semibold">{w.name}</h3>
-              <span className="text-xs text-slate-500">· {w.occupation}</span>
+              <span className="text-[10px] font-mono uppercase text-slate-500">Reliability</span>
+              <div className="flex-1 h-1.5 bg-white/10 rounded overflow-hidden max-w-[120px]">
+                <div
+                  className={cn(
+                    "h-full rounded",
+                    w.truthfulness >= 7 ? "bg-emerald-500" : w.truthfulness >= 4 ? "bg-amber-500" : "bg-red-500"
+                  )}
+                  style={{ width: `${w.truthfulness * 10}%` }}
+                />
+              </div>
+              <span className="text-xs font-mono text-slate-400">{w.truthfulness}/10</span>
             </div>
             <p className="text-sm text-slate-400 mb-3">{w.personality}</p>
             <div className="space-y-2">
@@ -25,10 +45,8 @@ export function WitnessesPanel({ caseData }: { caseData: InvestigationCase }) {
                 ))}
               </ul>
             </div>
-            <p className="text-xs text-slate-500 mt-3">
-              Truthfulness: {w.truthfulness}/10 · {w.speechStyle}
-            </p>
-          </div>
+            <p className="text-xs text-slate-500 mt-3 font-mono">{w.speechStyle}</p>
+          </DossierCard>
         ))}
       </div>
     </div>

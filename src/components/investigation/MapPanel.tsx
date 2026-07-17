@@ -5,6 +5,8 @@ import Image from "next/image";
 import { MapPin, Search } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+import { ObjectiveBanner } from "@/components/ui/ObjectiveBanner";
 import { cn } from "@/lib/utils";
 
 export function MapPanel({
@@ -31,14 +33,13 @@ export function MapPanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Investigation Map</h2>
+      <PanelHeader
+        icon={MapPin}
+        title="Investigation Map"
+        subtitle="Search locations to recover physical evidence. Some areas require warrants."
+      />
 
-      {navigationHint && focusLocationId && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
-          {navigationHint}
-        </div>
-      )}
+      {navigationHint && focusLocationId && <ObjectiveBanner hint={navigationHint} />}
       <div className="relative rounded-2xl overflow-hidden border border-white/10">
         <Image
           src={caseData.meta.coverImage}

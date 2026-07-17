@@ -6,6 +6,7 @@ import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
 import { PoliceReport } from "@/components/reports/PoliceReport";
 import type { PoliceReportData, ReportSection } from "@/lib/reports/parse-content";
+import { PanelHeader } from "@/components/ui/PanelHeader";
 
 function buildSubmittedReport(
   caseData: InvestigationCase,
@@ -172,14 +173,11 @@ export function ChargesheetPanel({
 
   return (
     <div className="space-y-5 max-w-2xl">
-      <div>
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Gavel className="w-5 h-5 text-amber-400" /> Prepare Chargesheet
-        </h2>
-        <p className="text-sm text-slate-400 mt-1">
-          Build your case properly — or take a shot with a quick accusation (the court will notice).
-        </p>
-      </div>
+      <PanelHeader
+        icon={Gavel}
+        title="Prepare Chargesheet"
+        subtitle="Build your case properly — or take a shot with a quick accusation (the court will notice)."
+      />
 
       {/* Section 1: Accused */}
       <fieldset className="glass-panel p-4 space-y-3">
@@ -187,7 +185,7 @@ export function ChargesheetPanel({
         <select
           value={accusedId}
           onChange={(e) => setAccusedId(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm"
+          className="select-field"
         >
           <option value="">Select suspect to charge...</option>
           {caseData.suspects.map((s) => (
@@ -205,7 +203,7 @@ export function ChargesheetPanel({
             value={motive}
             onChange={(e) => setMotive(e.target.value)}
             placeholder="Financial gain, silencing a witness, revenge..."
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+            className="input-field min-h-[60px] resize-none"
           />
         </div>
         <div>
@@ -214,7 +212,7 @@ export function ChargesheetPanel({
             value={opportunity}
             onChange={(e) => setOpportunity(e.target.value)}
             placeholder="Alibi gaps, access to location, timeline window..."
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+            className="input-field min-h-[60px] resize-none"
           />
         </div>
         <div>
@@ -223,7 +221,7 @@ export function ChargesheetPanel({
             value={method}
             onChange={(e) => setMethod(e.target.value)}
             placeholder="Weapon used, poison, arson, cause of death..."
-            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+            className="input-field min-h-[60px] resize-none"
           />
         </div>
       </fieldset>
@@ -262,7 +260,7 @@ export function ChargesheetPanel({
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
           placeholder="Connect the dots for the prosecutor..."
-          className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:outline-none"
+          className="input-field min-h-[60px] resize-none mt-2"
         />
       </fieldset>
 

@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { StickyNote } from "lucide-react";
 import type { InvestigationState, NotebookEntry } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES: NotebookEntry["category"][] = [
@@ -59,8 +62,11 @@ export function NotebookPanel({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Detective Notebook</h2>
-      <p className="text-sm text-slate-400">AI auto-categorizes your notes into facts, questions, and contradictions.</p>
+      <PanelHeader
+        icon={StickyNote}
+        title="Detective Notebook"
+        subtitle="AI auto-categorizes your notes into facts, questions, and contradictions."
+      />
 
       <div className="flex gap-2">
         <textarea
@@ -68,7 +74,7 @@ export function NotebookPanel({
           onChange={(e) => setNote(e.target.value)}
           placeholder={locked ? "Case closed — notes locked" : "Write observations, theories, questions..."}
           disabled={locked}
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm min-h-[80px] focus:outline-none focus:border-amber-500/50 resize-none disabled:opacity-50"
+          className="flex-1 input-field min-h-[80px] resize-none disabled:opacity-50"
         />
         {!locked && (
         <button
@@ -82,7 +88,11 @@ export function NotebookPanel({
       </div>
 
       {grouped.length === 0 ? (
-        <p className="text-slate-500 text-sm text-center py-8">No notes yet. Start documenting your investigation.</p>
+        <EmptyState
+          icon={StickyNote}
+          title="No notes yet"
+          description="Document theories, contradictions, and questions as you investigate."
+        />
       ) : (
         <div className="space-y-6">
           {grouped.map(({ cat, items }) => (

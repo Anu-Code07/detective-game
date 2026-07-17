@@ -4,6 +4,8 @@ import { useState } from "react";
 import { FileText, Lock } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+import { ObjectiveBanner } from "@/components/ui/ObjectiveBanner";
 import { cn } from "@/lib/utils";
 import { documentToReport } from "@/lib/reports/parse-content";
 import { PoliceReport } from "@/components/reports/PoliceReport";
@@ -32,23 +34,22 @@ export function DocumentsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">Case Documents</h2>
-        <button
-          onClick={() => !locked && requestWarrant(caseId, "financial and forensic")}
-          disabled={locked}
-          className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40 ring-2 ring-transparent focus:ring-amber-500/40"
-        >
-          Request Warrant
-        </button>
-      </div>
+      <PanelHeader
+        icon={FileText}
+        title="Case Documents"
+        subtitle="Official reports, warrants, and classified files"
+        action={
+          <button
+            onClick={() => !locked && requestWarrant(caseId, "financial and forensic")}
+            disabled={locked}
+            className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40"
+          >
+            Request Warrant
+          </button>
+        }
+      />
 
-      {navigationHint && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
-          {navigationHint}
-        </div>
-      )}
+      {navigationHint && <ObjectiveBanner hint={navigationHint} />}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="space-y-2 lg:col-span-1 max-h-[60vh] overflow-y-auto scrollbar-thin">

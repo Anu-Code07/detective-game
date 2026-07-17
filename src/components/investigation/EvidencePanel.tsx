@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Lock, ChevronRight } from "lucide-react";
+import { ArrowRight, Lock, ChevronRight, Search } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { cn } from "@/lib/utils";
 import { getEvidenceImage } from "@/lib/evidence-images";
@@ -10,6 +10,7 @@ import { useGameStore } from "@/store/game-store";
 import { EvidenceThumbnail } from "./EvidenceThumbnail";
 import { EvidenceDetailSheet } from "./EvidenceDetailSheet";
 import { InvestigationLeadsSection } from "./InvestigationLeadsSection";
+import { PanelHeader } from "@/components/ui/PanelHeader";
 
 const sigDot = {
   critical: "bg-red-400",
@@ -47,17 +48,16 @@ export function EvidencePanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">Evidence Locker</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Tap sealed exhibits to go where you need to unlock them
-          </p>
-        </div>
-        <span className="text-sm font-mono text-slate-500">
-          {recovered.length}/{items.length}
-        </span>
-      </div>
+      <PanelHeader
+        icon={Search}
+        title="Evidence Locker"
+        subtitle="Tap sealed exhibits to go where you need to unlock them"
+        action={
+          <span className="text-sm font-mono text-amber-400/80">
+            {recovered.length}/{items.length}
+          </span>
+        }
+      />
 
       <InvestigationLeadsSection caseData={caseData} investigation={investigation} caseId={caseId} />
 

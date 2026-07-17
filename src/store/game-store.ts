@@ -10,6 +10,7 @@ import type {
   PlayerProgress,
 } from "@/types/case";
 import { createInitialState, discoverEvidence, evaluateVerdict, unlockDocument } from "@/lib/case-engine/engine";
+import { getContradictionUnlockEvidence } from "@/lib/case-engine/contradictions";
 import {
   getLeadsForCase,
   getUnlockDestination,
@@ -20,6 +21,11 @@ import {
 import { getCaseById } from "@/lib/cases";
 import { generateId } from "@/lib/utils";
 
+interface Celebration {
+  title: string;
+  subtitle: string;
+}
+
 interface GameStore extends PlayerProgress {
   activeCaseId: string | null;
   activeTab: DashboardTab;
@@ -28,6 +34,13 @@ interface GameStore extends PlayerProgress {
   focusSuspectId: string | null;
   focusLocationId: string | null;
   navigationHint: string | null;
+  celebration: Celebration | null;
+  pendingContradiction: {
+    timelineEventId: string;
+    title: string;
+    message: string;
+    personId: string;
+  } | null;
   setActiveCase: (caseId: string) => void;
   setActiveTab: (tab: DashboardTab) => void;
   clearNavigationFocus: () => void;
@@ -68,6 +81,13 @@ interface GameStore extends PlayerProgress {
   searchLocation: (caseId: string, locationId: string) => void;
   requestWarrant: (caseId: string, target: string) => void;
   resetCase: (caseId: string) => void;
+  showCelebration: (title: string, subtitle?: string) => void;
+  dismissCelebration: () => void;
+  dismissTutorial: () => void;
+  setTheorySuspect: (caseId: string, suspectId: string) => void;
+  requestHint: (caseId: string, prideCost: number) => void;
+  setPendingContradiction: (data: GameStore["pendingContradiction"]) => void;
+  presentContradiction: (caseId: string, timelineEventId: string) => void;
 }
 
 function ensureGuestId(): string {
@@ -120,6 +140,56 @@ export const useGameStore = create<GameStore>()(
       focusSuspectId: null,
       focusLocationId: null,
       navigationHint: null,
+      celebration: null,
+      pendingContradiction: null,
+      tutorialDismissed: false,
+      theorySuspects: {},
+      hintsUsed: {},
+      detectivePride: 100,
+
+      showCelebration: (title, subtitle = "Logged in evidence locker and chain of custody.") =>
+        set({ celebration: { title, subtitle } }),
+      dismissCelebration: () => set({ celebration: null }),
+      dismissTutorial: () => set({ tutorialDismissed: true }),
+      setTheorySuspect: (caseId, suspectId) =>
+        set((s) => ({
+          theorySuspects: { ...s.theorySuspects, [caseId]: suspectId },
+        })),
+      requestHint: (caseId, prideCost) =>
+        set((s) => ({
+          hintsUsed: { ...(s.hintsUsed ?? {}), [caseId]: (s.hintsUsed?.[caseId] ?? 0) + 1 },
+          detectivePride: Math.max(0, (s.detectivePride ?? 100) - prideCost),
+        })),
+      setPendingContradiction: (data) => set({ pendingContradiction: data }),
+      presentContradiction: (caseId, timelineEventId) => {
+        const caseData = getCaseById(caseId);
+        const inv = get().investigations[caseId];
+        if (!inv || inv.contradictionsFound.includes(timelineEventId)) {
+          set({ pendingContradiction: null });
+          return;
+        }
+        let updated = {
+          ...inv,
+          contradictionsFound: [...inv.contradictionsFound, timelineEventId],
+        };
+        let celebrationTitle: string | null = null;
+        if (caseData) {
+          const evidenceId = getContradictionUnlockEvidence(caseData, timelineEventId);
+          if (evidenceId && !updated.discoveredEvidence.includes(evidenceId)) {
+            updated = discoverEvidence(updated, evidenceId);
+            celebrationTitle = caseData.evidence.find((e) => e.id === evidenceId)?.title ?? null;
+          }
+        }
+        set({
+          investigations: { ...get().investigations, [caseId]: updated },
+          pendingContradiction: null,
+        });
+        if (celebrationTitle) {
+          get().showCelebration(celebrationTitle, "Contradiction exposed — new exhibit recovered.");
+        } else {
+          get().showCelebration("Contradiction Logged", "Timeline conflict added to your case file.");
+        }
+      },
 
       setActiveCase: (caseId) => set({ activeCaseId: caseId }),
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -204,6 +274,10 @@ export const useGameStore = create<GameStore>()(
           };
         });
 
+        if (evidenceTitle) {
+          get().showCelebration(evidenceTitle, "Deduction confirmed — exhibit added to case file.");
+        }
+
         return { correct: true, evidenceTitle };
       },
 
@@ -228,6 +302,10 @@ export const useGameStore = create<GameStore>()(
             },
           };
         });
+
+        if (evidenceTitle) {
+          get().showCelebration(evidenceTitle, "They cracked under pressure — new evidence recovered.");
+        }
 
         return evidenceTitle;
       },
@@ -449,7 +527,11 @@ export const useGameStore = create<GameStore>()(
             completed: true,
             finalAccusation: { ...data, submittedAt: new Date().toISOString() },
           };
-          const verdict = evaluateVerdict(caseData, withAccusation);
+          const verdict = evaluateVerdict(
+            caseData,
+            withAccusation,
+            get().theorySuspects?.[caseId]
+          );
           const completed = verdict.success
             ? [...new Set([...s.completedCases, caseId])]
             : s.completedCases;
@@ -487,6 +569,10 @@ export const useGameStore = create<GameStore>()(
         caseScores: state.caseScores,
         investigations: state.investigations,
         guestId: state.guestId,
+        tutorialDismissed: state.tutorialDismissed,
+        theorySuspects: state.theorySuspects,
+        hintsUsed: state.hintsUsed,
+        detectivePride: state.detectivePride,
       }),
       onRehydrateStorage: () => (state) => {
         if (state && !state.guestId) {
@@ -500,6 +586,10 @@ export const useGameStore = create<GameStore>()(
             }
           }
         }
+        if (state && state.tutorialDismissed === undefined) state.tutorialDismissed = false;
+        if (state && !state.theorySuspects) state.theorySuspects = {};
+        if (state && !state.hintsUsed) state.hintsUsed = {};
+        if (state && state.detectivePride === undefined) state.detectivePride = 100;
       },
     }
   )

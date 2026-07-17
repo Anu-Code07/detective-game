@@ -267,13 +267,24 @@ export interface VerdictResult {
     accuracy: number;
     courtSuccess: number;
   };
+  categoryScores: {
+    evidence: number;
+    interrogation: number;
+    theory: number;
+  };
   feedback: string[];
   rejectedEvidence: string[];
   defenseChallenges: string[];
+  recapStory?: string[];
+  theoryChanged?: boolean;
 }
 
 export interface PlayerProgress {
   completedCases: string[];
   caseScores: Record<string, number>;
   investigations: Record<string, InvestigationState>;
+  tutorialDismissed?: boolean;
+  theorySuspects?: Record<string, string>;
+  hintsUsed?: Record<string, number>;
+  detectivePride?: number;
 }

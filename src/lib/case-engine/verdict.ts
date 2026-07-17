@@ -1,4 +1,5 @@
 import type { InvestigationCase, InvestigationState, VerdictResult, VerdictTier } from "@/types/case";
+import { generateCaseRecap } from "@/lib/case-engine/recap";
 
 function fieldMatchScore(playerText: string | undefined, solutionText: string): number {
   if (!playerText?.trim()) return 0;
@@ -52,7 +53,8 @@ const TIER_COPY: Record<VerdictTier, { label: string; message: string }> = {
 
 export function evaluateVerdict(
   caseData: InvestigationCase,
-  state: InvestigationState
+  state: InvestigationState,
+  earlyTheorySuspectId?: string
 ): VerdictResult {
   const { solution } = caseData;
   const accusation = state.finalAccusation;
@@ -180,8 +182,13 @@ export function evaluateVerdict(
   }
 
   if (rejectedEvidence.length > 0) {
+    const names = rejectedEvidence
+      .map((id) => caseData.evidence.find((e) => e.id === id)?.title ?? id)
+      .join(", ");
     feedback.push(`${rejectedEvidence.length} exhibit(s) ruled inadmissible or misleading.`);
-    defenseChallenges.push("Defense: Several exhibits are compromised or irrelevant.");
+    defenseChallenges.push(
+      `Defense tore apart your filing: "${names}" — not relevant to the crime. The jury saw through it.`
+    );
   }
 
   if (contradictionBonus > 0) {
@@ -204,6 +211,21 @@ export function evaluateVerdict(
     feedback.push("CASE UNSOLVED — The perpetrator walks free.");
   }
 
+  const interrogationScore = Math.min(
+    100,
+    Math.round(
+      state.contradictionsFound.length * 15 +
+        (state.solvedLeads?.length ?? 0) * 12 +
+        Math.max(0, 70 - state.questionsAsked * 1.5) +
+        hiddenFound * 10
+    )
+  );
+
+  const theoryChanged =
+    !!earlyTheorySuspectId &&
+    earlyTheorySuspectId !== accusation.accusedId &&
+    correctAccused;
+
   return {
     success,
     score: Math.max(0, Math.min(100, score)),
@@ -217,9 +239,16 @@ export function evaluateVerdict(
       accuracy,
       courtSuccess,
     },
+    categoryScores: {
+      evidence: evidenceQuality,
+      interrogation: interrogationScore,
+      theory: theoryScore,
+    },
     feedback,
     rejectedEvidence,
     defenseChallenges,
+    recapStory: generateCaseRecap(caseData, tier, accusation.accusedId) ?? undefined,
+    theoryChanged,
   };
 }
 
@@ -231,6 +260,7 @@ function emptyVerdict(msg: string): VerdictResult {
     tierLabel: "No Filing",
     tierMessage: msg,
     grades: { logic: 0, evidenceQuality: 0, efficiency: 0, accuracy: 0, courtSuccess: 0 },
+    categoryScores: { evidence: 0, interrogation: 0, theory: 0 },
     feedback: [msg],
     rejectedEvidence: [],
     defenseChallenges: [],

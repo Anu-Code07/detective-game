@@ -3,27 +3,29 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BookOpen,
   ClipboardList,
+  Clock,
   FileText,
   Gavel,
   LayoutDashboard,
   Map,
   Menu,
   MessageSquare,
+  MoreHorizontal,
   Network,
   Scale,
   Search,
+  StickyNote,
   Users,
   ArrowLeft,
   X,
 } from "lucide-react";
-import { useState } from "react";
 import { getCaseById } from "@/lib/cases";
 import { useGameStore } from "@/store/game-store";
+import { getInvestigationProgress } from "@/lib/case-engine/objectives";
 import { cn } from "@/lib/utils";
 import type { DashboardTab } from "@/types/case";
 import { OverviewPanel } from "@/components/investigation/OverviewPanel";
@@ -39,6 +41,14 @@ import { MapPanel } from "@/components/investigation/MapPanel";
 import { ChargesheetPanel } from "@/components/investigation/ChargesheetPanel";
 import { VerdictPanel } from "@/components/investigation/VerdictPanel";
 import { CaseClosedBanner } from "@/components/investigation/CaseClosedBanner";
+import { FirstCaseTutorial } from "@/components/investigation/FirstCaseTutorial";
+import { TheoryCheckpoint } from "@/components/investigation/TheoryCheckpoint";
+import { StuckHint } from "@/components/investigation/StuckHint";
+import {
+  InvestigationObjectiveBar,
+  InvestigationProgressStrip,
+} from "@/components/investigation/InvestigationObjectiveBar";
+import { UnlockCelebration } from "@/components/ui/UnlockCelebration";
 
 const NAV: { id: DashboardTab; label: string; short: string; icon: typeof Search }[] = [
   { id: "overview", label: "Briefing", short: "Brief", icon: LayoutDashboard },
@@ -47,15 +57,25 @@ const NAV: { id: DashboardTab; label: string; short: string; icon: typeof Search
   { id: "suspects", label: "Suspects", short: "Suspects", icon: Users },
   { id: "witnesses", label: "Witnesses", short: "Witness", icon: MessageSquare },
   { id: "interrogate", label: "Interrogate", short: "Interrogate", icon: ClipboardList },
-  { id: "timeline", label: "Timeline", short: "Timeline", icon: BookOpen },
+  { id: "timeline", label: "Timeline", short: "Timeline", icon: Clock },
   { id: "board", label: "Case Board", short: "Board", icon: Network },
   { id: "map", label: "Map", short: "Map", icon: Map },
-  { id: "notebook", label: "Notebook", short: "Notes", icon: BookOpen },
+  { id: "notebook", label: "Notebook", short: "Notes", icon: StickyNote },
   { id: "chargesheet", label: "Chargesheet", short: "Charge", icon: Scale },
   { id: "verdict", label: "Verdict", short: "Verdict", icon: Gavel },
 ];
 
-const MOBILE_PRIMARY: DashboardTab[] = ["overview", "evidence", "interrogate", "chargesheet", "verdict"];
+const MOBILE_PRIMARY: DashboardTab[] = ["overview", "evidence", "interrogate", "verdict"];
+const MOBILE_MORE: DashboardTab[] = [
+  "documents",
+  "suspects",
+  "witnesses",
+  "timeline",
+  "board",
+  "map",
+  "notebook",
+  "chargesheet",
+];
 
 export default function InvestigatePage() {
   const params = useParams();
@@ -64,6 +84,7 @@ export default function InvestigatePage() {
   const { activeTab, setActiveTab, startCase, getInvestigation } = useGameStore();
   const investigation = getInvestigation(caseId);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
     if (caseData) startCase(caseId);
@@ -77,26 +98,64 @@ export default function InvestigatePage() {
     );
   }
 
+  const progress = getInvestigationProgress(caseData, investigation);
+
   const renderPanel = () => {
     switch (activeTab) {
-      case "overview": return <OverviewPanel caseData={caseData} investigation={investigation} />;
-      case "evidence": return <EvidencePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "documents": return <DocumentsPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "suspects": return <SuspectsPanel caseData={caseData} />;
-      case "witnesses": return <WitnessesPanel caseData={caseData} />;
-      case "interrogate": return <InterrogatePanel caseData={caseData} investigation={investigation} caseId={caseId} locked={!!investigation?.completed} />;
-      case "timeline": return <TimelinePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "board": return <CaseBoardPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "map": return <MapPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "notebook": return <NotebookPanel investigation={investigation} caseId={caseId} />;
-      case "chargesheet": return <ChargesheetPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={!!investigation?.completed} />;
-      case "verdict": return <VerdictPanel caseData={caseData} investigation={investigation} />;
-      default: return null;
+      case "overview":
+        return <OverviewPanel caseData={caseData} investigation={investigation} />;
+      case "evidence":
+        return <EvidencePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "documents":
+        return <DocumentsPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "suspects":
+        return <SuspectsPanel caseData={caseData} />;
+      case "witnesses":
+        return <WitnessesPanel caseData={caseData} />;
+      case "interrogate":
+        return (
+          <InterrogatePanel
+            caseData={caseData}
+            investigation={investigation}
+            caseId={caseId}
+            locked={!!investigation?.completed}
+          />
+        );
+      case "timeline":
+        return <TimelinePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "board":
+        return <CaseBoardPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "map":
+        return <MapPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "notebook":
+        return <NotebookPanel investigation={investigation} caseId={caseId} />;
+      case "chargesheet":
+        return (
+          <ChargesheetPanel
+            caseData={caseData}
+            investigation={investigation}
+            caseId={caseId}
+            locked={!!investigation?.completed}
+          />
+        );
+      case "verdict":
+        return <VerdictPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      default:
+        return null;
     }
   };
 
+  function selectTab(tab: DashboardTab) {
+    setActiveTab(tab);
+    setMenuOpen(false);
+    setMoreOpen(false);
+  }
+
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-0">
+      <UnlockCelebration />
+      <FirstCaseTutorial caseId={caseId} />
+
       <header className="border-b border-white/5 bg-[#060a12]/95 backdrop-blur-xl sticky top-0 z-50 safe-top">
         <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 sm:py-3">
           <Link href="/cases" className="text-slate-400 hover:text-amber-400 p-2 -ml-1">
@@ -110,6 +169,7 @@ export default function InvestigatePage() {
               Case #{String(caseData.meta.order).padStart(2, "0")}
             </p>
             <h1 className="font-semibold truncate text-sm sm:text-base">{caseData.meta.title}</h1>
+            <InvestigationProgressStrip caseData={caseData} investigation={investigation} />
           </div>
           {investigation?.completed && (
             <span className="text-[10px] sm:text-xs px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-mono flex-shrink-0">
@@ -125,16 +185,21 @@ export default function InvestigatePage() {
           </button>
         </div>
 
-        {/* Desktop nav */}
+        {!investigation?.completed && (
+          <div className="progress-bar-header">
+            <div className="progress-bar-header-fill" style={{ width: `${progress.pct}%` }} />
+          </div>
+        )}
+
         <nav className="hidden md:flex gap-1 px-4 pb-2 overflow-x-auto scrollbar-thin">
           {NAV.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => selectTab(item.id)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200",
                 activeTab === item.id
-                  ? "bg-amber-500/20 text-amber-300 scale-105"
+                  ? "bg-amber-500/20 text-amber-300"
                   : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
               )}
             >
@@ -144,7 +209,6 @@ export default function InvestigatePage() {
           ))}
         </nav>
 
-        {/* Mobile expanded menu */}
         <AnimatePresence>
           {menuOpen && (
             <motion.nav
@@ -157,7 +221,7 @@ export default function InvestigatePage() {
                 {NAV.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => { setActiveTab(item.id); setMenuOpen(false); }}
+                    onClick={() => selectTab(item.id)}
                     className={cn(
                       "flex flex-col items-center gap-1 p-3 rounded-xl text-[10px] font-medium transition-all",
                       activeTab === item.id ? "bg-amber-500/20 text-amber-300" : "bg-white/5 text-slate-400"
@@ -176,20 +240,33 @@ export default function InvestigatePage() {
       <CaseClosedBanner caseId={caseId} investigation={investigation} />
 
       <main className="flex-1 p-3 sm:p-4 md:p-6 max-w-7xl mx-auto w-full">
+        {!investigation?.completed && (
+          <>
+            <InvestigationObjectiveBar
+              caseData={caseData}
+              investigation={investigation}
+              caseId={caseId}
+            />
+            <TheoryCheckpoint caseData={caseData} investigation={investigation} caseId={caseId} />
+            <div className="mb-4">
+              <StuckHint caseData={caseData} investigation={investigation} caseId={caseId} />
+            </div>
+          </>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 16, filter: "blur(6px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
             {renderPanel()}
           </motion.div>
         </AnimatePresence>
       </main>
 
-      {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 bg-[#060a12]/95 backdrop-blur-xl safe-bottom">
         <div className="flex justify-around items-center px-1 py-1">
           {MOBILE_PRIMARY.map((tabId) => {
@@ -197,20 +274,58 @@ export default function InvestigatePage() {
             return (
               <button
                 key={tabId}
-                onClick={() => setActiveTab(tabId)}
+                onClick={() => selectTab(tabId)}
                 className={cn(
                   "flex flex-col items-center gap-0.5 py-2 px-2 rounded-lg flex-1 max-w-[72px] transition-all",
                   activeTab === tabId ? "text-amber-400" : "text-slate-500"
                 )}
               >
-                <motion.div animate={activeTab === tabId ? { scale: [1, 1.15, 1] } : {}} transition={{ duration: 0.3 }}>
-                  <item.icon className="w-5 h-5" />
-                </motion.div>
+                <item.icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium truncate w-full text-center">{item.short}</span>
               </button>
             );
           })}
+          <button
+            onClick={() => setMoreOpen(!moreOpen)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 py-2 px-2 rounded-lg flex-1 max-w-[72px] transition-all",
+              MOBILE_MORE.includes(activeTab) || moreOpen ? "text-amber-400" : "text-slate-500"
+            )}
+          >
+            <MoreHorizontal className="w-5 h-5" />
+            <span className="text-[9px] font-medium">More</span>
+          </button>
         </div>
+
+        <AnimatePresence>
+          {moreOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-white/10 overflow-hidden"
+            >
+              <div className="grid grid-cols-4 gap-2 p-3">
+                {MOBILE_MORE.map((tabId) => {
+                  const item = NAV.find((n) => n.id === tabId)!;
+                  return (
+                    <button
+                      key={tabId}
+                      onClick={() => selectTab(tabId)}
+                      className={cn(
+                        "flex flex-col items-center gap-1 p-2 rounded-xl text-[9px] font-medium",
+                        activeTab === tabId ? "bg-amber-500/20 text-amber-300" : "bg-white/5 text-slate-400"
+                      )}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
     </div>
   );

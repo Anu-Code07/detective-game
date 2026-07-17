@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { FileSearch, Loader2, Send, Shield, User } from "lucide-react";
+import { FileSearch, Loader2, Send, Shield, User, AlertTriangle } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
 import { getEvidenceImage } from "@/lib/evidence-images";
+import { detectInterrogationContradiction } from "@/lib/case-engine/contradictions";
 import { EvidenceThumbnail } from "./EvidenceThumbnail";
+import { PanelHeader } from "@/components/ui/PanelHeader";
+import { ObjectiveBanner } from "@/components/ui/ObjectiveBanner";
 import { cn } from "@/lib/utils";
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -100,6 +103,9 @@ export function InterrogatePanel({
     tryInterrogationUnlock,
     focusSuspectId,
     navigationHint,
+    pendingContradiction,
+    setPendingContradiction,
+    presentContradiction,
   } = useGameStore();
 
   const suspect =
@@ -194,6 +200,18 @@ export function InterrogatePanel({
         addInterrogationMessage(caseId, suspectId, "suspect", data.reply, {
           emotionalState: data.emotionalState,
         });
+
+        if (investigation) {
+          const contradiction = detectInterrogationContradiction(
+            caseData,
+            suspectId,
+            data.reply,
+            investigation
+          );
+          if (contradiction) {
+            setPendingContradiction(contradiction);
+          }
+        }
       }
     } catch {
       addInterrogationMessage(
@@ -213,20 +231,18 @@ export function InterrogatePanel({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div>
-          <h2 className="text-xl font-bold">Interrogation Room</h2>
-          <p className="text-sm text-slate-400 mt-0.5">
-            Press suspects with questions. Slam evidence on the table to break their story.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
-          <span>{investigation?.questionsAsked ?? 0} questions asked</span>
-        </div>
-      </div>
+    <div className="space-y-4 interrogation-room">
+      <PanelHeader
+        icon={Shield}
+        title="Interrogation Room"
+        subtitle="Press suspects with questions. Slam evidence on the table to break their story."
+        action={
+          <span className="text-xs font-mono text-slate-500">
+            {investigation?.questionsAsked ?? 0} questions
+          </span>
+        }
+      />
 
-      {/* Suspect tabs */}
       {unlockToast && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -238,10 +254,32 @@ export function InterrogatePanel({
       )}
 
       {navigationHint && focusSuspectId === suspectId && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
-          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
-          {navigationHint}
-        </div>
+        <ObjectiveBanner hint={navigationHint} />
+      )}
+
+      {pendingContradiction && pendingContradiction.personId === suspectId && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="rounded-xl border-2 border-red-500/40 bg-red-500/10 p-4"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-[10px] font-mono uppercase tracking-wider text-red-400 mb-1">
+                Contradiction detected
+              </p>
+              <p className="font-semibold text-red-100">{pendingContradiction.title}</p>
+              <p className="text-sm text-slate-300 mt-1">{pendingContradiction.message}</p>
+              <button
+                onClick={() => presentContradiction(caseId, pendingContradiction.timelineEventId)}
+                className="mt-3 w-full sm:w-auto px-5 py-2.5 rounded-lg bg-red-500 text-white font-semibold text-sm hover:bg-red-400 transition-colors"
+              >
+                Present Contradiction
+              </button>
+            </div>
+          </div>
+        </motion.div>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -431,7 +469,7 @@ export function InterrogatePanel({
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && ask()}
               placeholder={`Ask ${suspect?.name ?? "suspect"} something...`}
-              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500/50"
+              className="flex-1 input-field"
             />
             <button
               onClick={() => ask()}
