@@ -70,6 +70,26 @@ const LEADS_BY_CASE: Record<string, EvidenceUnlockLead[]> = {
         { suspectId: "suspect-webb", keywords: ["northline", "consulting", "payment", "ledger"], minMatches: 2 },
       ],
     },
+    {
+      id: "lead-01-call",
+      evidenceId: "ev-call",
+      title: "Alibi Call Gap",
+      context:
+        "Webb claims an investor call covered his evening. Badge logs place him in the garage later — the call story needs verification.",
+      question: "Where do you find Webb's investor call records?",
+      options: [
+        "Telecom subpoena / phone records",
+        "Webb's personal email",
+        "Victim's briefcase",
+        "Garage CCTV only",
+      ],
+      correctIndex: 0,
+      answerKeywords: ["telecom", "phone", "call", "investor", "alibi", "subpoena", "recording"],
+      requiresEvidence: ["ev-badge"],
+      interrogationTriggers: [
+        { suspectId: "suspect-webb", keywords: ["investor", "call", "alibi", "phone", "10:22"], minMatches: 2 },
+      ],
+    },
   ],
   "case-02-blood-tide": [
     {
@@ -613,10 +633,32 @@ export function getUnlockDestination(
     return { tab: "evidence", hint: cond, actionLabel: "Solve investigation lead" };
   }
 
+  // Document-linked exhibits (red herrings, alibi records, etc.)
+  if (ev?.documentId) {
+    const doc = caseData.documents.find((d) => d.id === ev.documentId);
+    const docTitle = doc?.title ?? "case document";
+    const docOpen =
+      doc && (!doc.classified || stateNorm.unlockedDocuments.includes(doc.id));
+
+    if (docOpen) {
+      return {
+        tab: "documents",
+        hint: `Open "${docTitle}" in Case Documents to log this exhibit.`,
+        actionLabel: `Documents → ${docTitle}`,
+      };
+    }
+
+    return {
+      tab: "documents",
+      hint: `Request a warrant to unlock "${docTitle}", then review it.`,
+      actionLabel: "Documents → Request Warrant",
+    };
+  }
+
   return {
     tab: "evidence",
     leadId: lead?.id,
-    hint: cond || "Review investigation leads",
-    actionLabel: lead ? `Solve lead: ${lead.title}` : "View investigation leads",
+    hint: cond || `Investigate further to recover "${ev?.title ?? "this exhibit"}".`,
+    actionLabel: lead ? `Solve lead: ${lead.title}` : "Review evidence locker",
   };
 }

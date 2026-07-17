@@ -9,7 +9,11 @@ import type {
   NotebookEntry,
   PlayerProgress,
 } from "@/types/case";
-import { createInitialState, discoverEvidence, evaluateVerdict, unlockDocument } from "@/lib/case-engine/engine";
+import { createInitialState, discoverEvidence, evaluateVerdict } from "@/lib/case-engine/engine";
+import {
+  applyDocumentUnlock,
+  reconcileInvestigationState,
+} from "@/lib/case-engine/evidence-reachability";
 import { getContradictionUnlockEvidence } from "@/lib/case-engine/contradictions";
 import {
   getLeadsForCase,
@@ -115,7 +119,7 @@ function applyLeadUnlock(
 
   const ev = caseData.evidence.find((e) => e.id === lead.evidenceId);
   if (ev?.documentId) {
-    updated = unlockDocument(updated, ev.documentId);
+    updated = applyDocumentUnlock(caseData, updated, ev.documentId);
   }
 
   for (const tl of caseData.timeline) {
@@ -192,7 +196,15 @@ export const useGameStore = create<GameStore>()(
       },
 
       setActiveCase: (caseId) => set({ activeCaseId: caseId }),
-      setActiveTab: (tab) => set({ activeTab: tab }),
+      setActiveTab: (tab) =>
+        set((s) => ({
+          activeTab: tab,
+          // Clear stale navigation when player switches tabs manually
+          navigationHint: null,
+          focusLeadId: null,
+          focusSuspectId: null,
+          focusLocationId: null,
+        })),
 
       clearNavigationFocus: () =>
         set({
@@ -217,14 +229,26 @@ export const useGameStore = create<GameStore>()(
         });
       },
 
-      getInvestigation: (caseId) => get().investigations[caseId] ?? null,
+      getInvestigation: (caseId) => {
+        const inv = get().investigations[caseId] ?? null;
+        return inv;
+      },
 
       startCase: (caseId) => {
         const caseData = getCaseById(caseId);
         if (!caseData) return;
         const existing = get().investigations[caseId];
         if (existing) {
-          set({ activeCaseId: caseId, activeTab: "overview" });
+          const reconciled = reconcileInvestigationState(caseData, existing);
+          const changed =
+            reconciled.discoveredEvidence.length !== existing.discoveredEvidence.length;
+          set((s) => ({
+            activeCaseId: caseId,
+            activeTab: "overview",
+            ...(changed
+              ? { investigations: { ...s.investigations, [caseId]: reconciled } }
+              : {}),
+          }));
           return;
         }
         const state = createInitialState(caseId, caseData);
@@ -311,14 +335,24 @@ export const useGameStore = create<GameStore>()(
       },
 
       unlockDocument: (caseId, docId) => {
+        const caseData = getCaseById(caseId);
         set((s) => {
           const inv = s.investigations[caseId];
-          if (!inv || inv.unlockedDocuments.includes(docId)) return s;
+          if (!inv || !caseData) return s;
+          const before = new Set(inv.discoveredEvidence);
+          const updated = applyDocumentUnlock(caseData, inv, docId);
+          const newIds = updated.discoveredEvidence.filter((id) => !before.has(id));
+          if (newIds.length > 0) {
+            const title = caseData.evidence.find((e) => e.id === newIds[0])?.title;
+            if (title) {
+              setTimeout(
+                () => get().showCelebration(title, "Exhibit logged from case documents."),
+                300
+              );
+            }
+          }
           return {
-            investigations: {
-              ...s.investigations,
-              [caseId]: { ...inv, unlockedDocuments: [...inv.unlockedDocuments, docId] },
-            },
+            investigations: { ...s.investigations, [caseId]: updated },
           };
         });
       },
@@ -492,24 +526,22 @@ export const useGameStore = create<GameStore>()(
         set((s) => {
           const inv = s.investigations[caseId];
           if (!inv) return s;
-          const updated = {
+          const caseData = getCaseById(caseId);
+          let updated: InvestigationState = {
             ...inv,
             warrantsRequested: [...inv.warrantsRequested, target],
           };
-          const caseData = getCaseById(caseId);
           if (caseData) {
-            const state = updated;
             for (const doc of caseData.documents) {
               if (doc.classified) {
-                state.unlockedDocuments = [...state.unlockedDocuments, doc.id];
+                updated = applyDocumentUnlock(caseData, updated, doc.id);
               }
             }
             for (const tl of caseData.timeline) {
-              if (!tl.known) {
-                state.discoveredTimeline = [...state.discoveredTimeline, tl.id];
+              if (!tl.known && !updated.discoveredTimeline.includes(tl.id)) {
+                updated = { ...updated, discoveredTimeline: [...updated.discoveredTimeline, tl.id] };
               }
             }
-            return { investigations: { ...s.investigations, [caseId]: state } };
           }
           return { investigations: { ...s.investigations, [caseId]: updated } };
         });
@@ -583,6 +615,10 @@ export const useGameStore = create<GameStore>()(
             const inv = state.investigations[caseId];
             if (inv && !inv.solvedLeads) {
               inv.solvedLeads = [];
+            }
+            const caseData = getCaseById(caseId);
+            if (caseData && inv) {
+              state.investigations[caseId] = reconcileInvestigationState(caseData, inv);
             }
           }
         }

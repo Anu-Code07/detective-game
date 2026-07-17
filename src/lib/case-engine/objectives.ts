@@ -96,12 +96,12 @@ export function getCurrentObjective(
   }
 
   const sealed = caseData.evidence.filter(
-    (e) => !e.discoveredByDefault && !investigation.discoveredEvidence.includes(e.id)
+    (e) => !investigation.discoveredEvidence.includes(e.id)
   );
   if (sealed.length > 0) {
     const dest = getUnlockDestination(caseData, state, sealed[0].id);
     return {
-      hint: `Sealed exhibit waiting: ${sealed[0].title}. ${dest.hint}`,
+      hint: `Outstanding exhibit: ${sealed[0].title}. ${dest.hint}`,
       tab: dest.tab,
       actionLabel: dest.actionLabel,
       leadId: dest.leadId,
