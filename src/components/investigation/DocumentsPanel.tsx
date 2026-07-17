@@ -78,15 +78,18 @@ export function DocumentsPanel({
         {active?.available && (
           <div className="lg:col-span-2 max-h-[70vh] overflow-y-auto scrollbar-thin">
             <PoliceReport
-              data={documentToReport({
-                title: active.title,
-                referenceNumber: active.referenceNumber,
-                date: active.date,
-                author: active.author,
-                content: active.content,
-                type: active.type,
-                classified: active.classified,
-              })}
+              data={documentToReport(
+                {
+                  title: active.title,
+                  referenceNumber: active.referenceNumber,
+                  date: active.date,
+                  author: active.author,
+                  content: active.content,
+                  type: active.type,
+                  classified: active.classified,
+                },
+                { caseMeta: caseData.meta, victim: caseData.victim }
+              )}
             />
           </div>
         )}

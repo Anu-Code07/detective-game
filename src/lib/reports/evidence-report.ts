@@ -8,7 +8,11 @@ export function evidenceToReport(
 ): PoliceReportData {
   const sections: ReportSection[] = [
     {
-      heading: "Summary of Exhibit",
+      heading: "Exhibit Specification",
+      rows: detail.exhibitSpecs,
+    },
+    {
+      heading: "Executive Summary",
       body: detail.summary,
     },
     {
@@ -19,34 +23,54 @@ export function evidenceToReport(
 
   if (detail.labResults?.length) {
     sections.push({
-      heading: "Laboratory Results",
+      heading: "Laboratory Analysis",
       bullets: detail.labResults,
     });
   }
 
-  sections.push({
-    heading: "Related Subjects",
-    bullets: detail.relatedSubjects.length
-      ? detail.relatedSubjects
-      : ["None linked at time of report"],
-  });
+  if (detail.relatedSubjects.length) {
+    sections.push({
+      heading: "Related Subjects",
+      table: {
+        headers: ["#", "Subject"],
+        rows: detail.relatedSubjects.map((s, i) => [String(i + 1), s]),
+      },
+    });
+  } else {
+    sections.push({
+      heading: "Related Subjects",
+      body: "No subjects formally linked at time of initial report filing.",
+    });
+  }
 
   sections.push({
     heading: "Chain of Custody",
     table: {
-      headers: ["Step", "Action"],
-      rows: detail.chainOfCustody.map((step, i) => [String(i + 1), step]),
+      headers: ["Step", "Date / Action", "Custodian"],
+      rows: detail.chainOfCustody.map((step, i) => {
+        const parts = step.split(" — ");
+        const dateAction = parts[0] ?? step;
+        const custodian = parts.slice(1).join(" — ") || "Evidence Unit";
+        return [String(i + 1), dateAction, custodian];
+      }),
     },
   });
 
   sections.push({
-    heading: "Examiner Notes",
+    heading: "Examiner Notes & Certification",
     body: detail.examinerNotes,
+  });
+
+  sections.push({
+    heading: "Prosecutorial Review",
+    body:
+      "This exhibit has been reviewed for chain-of-custody integrity, relevance, and potential exculpatory material. " +
+      "Recommend inclusion in discovery packet upon chargesheet filing. Defense inspection available by appointment.",
   });
 
   if (detail.detectiveNotes) {
     sections.push({
-      heading: "Detective Insight",
+      heading: "Lead Detective Annotation",
       body: detail.detectiveNotes,
       highlight: true,
     });
@@ -63,9 +87,13 @@ export function evidenceToReport(
     meta: [
       { label: "Case", value: caseTitle },
       { label: "Classification", value: detail.classification },
+      { label: "Findings Count", value: String(detail.findings.length) },
+      { label: "Lab Analysis", value: detail.labResults ? "COMPLETE" : "N/A" },
     ],
     sections,
-    footer: "Exhibit sealed and logged. Chain of custody must be maintained for court admissibility.",
+    footer:
+      "Exhibit sealed and logged. Chain of custody must be maintained for court admissibility. " +
+      "Tampering with evidence is a felony under Penal Code §141.",
     stamp: "LOGGED",
   };
 }

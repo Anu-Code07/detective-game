@@ -58,15 +58,33 @@ export function firContent(
 Ref: ${ref}
 Case: ${caseTitle}
 
+REPORTING OFFICER: Detective Bureau — Homicide Unit
 Date/Time of Report: ${details.datetime}
-Reporting Officer: Detective Bureau
+Classification: Homicide — Priority One
 
-COMPLAINANT: ${details.complainant}
-VICTIM: ${details.victim}
-LOCATION: ${details.location}
+COMPLAINANT
+${details.complainant}
 
-NARRATIVE:
+VICTIM
+${details.victim}
+
+LOCATION OF INCIDENT
+${details.location}
+
+SCENE CONDITIONS
+Area secured upon arrival. Evidence preservation protocol initiated. Medical examiner notified. Photography and measurements completed. Witness canvass assigned.
+
+NARRATIVE OF EVENTS
 ${details.narrative}
+
+INITIAL EVIDENCE SEIZED
+Items logged and tagged at scene. Chain of custody initiated. Forensic services requested for latent prints, biological samples, and digital media where applicable.
+
+WITNESS STATUS
+Canvass in progress. Statements to be recorded under case file reference.
+
+INVESTIGATIVE STATUS
+Case assigned to Detective Bureau. Autopsy ordered. Subpoenas pending for records and surveillance.
 
 STATUS: Under Active Investigation
 CLASSIFICATION: Homicide — Priority One`;
@@ -86,12 +104,35 @@ export function autopsyContent(
 Ref: ${details.ref}
 Subject: ${victimName}
 Exam Date: ${details.date}
+Examiner: Dr. Elena Marsh, Chief Medical Examiner
 
-CAUSE OF DEATH: ${details.cause}
-ESTIMATED TIME OF DEATH: ${details.timeOfDeath}
+CAUSE OF DEATH
+${details.cause}
 
-FINDINGS:
+MANNER OF DEATH
+Homicide
+
+ESTIMATED TIME OF DEATH
+${details.timeOfDeath}
+
+EXTERNAL EXAMINATION
+Full body examination performed. Injuries documented photographically. Clothing preserved as evidence. Trace evidence collected per protocol.
+
+INTERNAL EXAMINATION
+Complete autopsy performed. Organ weights recorded. Tissue samples retained for histology and toxicology.
+
+TOXICOLOGY
+Standard drug and poison screen submitted. Results noted in findings below.
+
+PATHOLOGICAL FINDINGS
 ${details.findings.map((f, i) => `${i + 1}. ${f}`).join("\n")}
 
-Signed: Dr. Elena Marsh, Chief Medical Examiner`;
+CONCLUSION
+Death resulted from injuries consistent with findings above. Manner of death certified as homicide pending law enforcement investigation.
+
+SPECIMENS RETAINED
+Toxicology aliquots, histology slides, and reference samples archived per office policy.
+
+Signed: Dr. Elena Marsh, Chief Medical Examiner
+Date: ${details.date}`;
 }

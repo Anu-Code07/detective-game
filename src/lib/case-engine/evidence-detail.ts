@@ -1,4 +1,10 @@
 import type { EvidenceItem, InvestigationCase } from "@/types/case";
+import {
+  generateChainOfCustody,
+  generateDetailedFindings,
+  generateExaminerNotes,
+  generateLabResults,
+} from "@/lib/reports/detail-generators";
 
 export interface EvidenceDetail {
   referenceNumber: string;
@@ -12,6 +18,7 @@ export interface EvidenceDetail {
   relatedSubjects: string[];
   labResults?: string[];
   detectiveNotes?: string;
+  exhibitSpecs: Array<{ label: string; value: string }>;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -34,38 +41,66 @@ export function buildEvidenceDetail(
 
   const people = [...caseData.suspects, ...caseData.witnesses, caseData.victim as { id: string; name: string }]
     .filter((p) => item.relatedPeople.includes(p.id))
-    .map((p) => p.name);
+    .map((p) => {
+      const role = p.id.startsWith("victim") ? "Victim" : p.id.startsWith("suspect") ? "Suspect" : "Witness";
+      return `${p.name} (${role})`;
+    });
 
   const linkedDoc = item.documentId
     ? caseData.documents.find((d) => d.id === item.documentId)
     : null;
 
-  const linkedEvidence = item.relatedEvidence
-    .map((id) => caseData.evidence.find((e) => e.id === id)?.title)
-    .filter(Boolean) as string[];
-
-  const findings = buildFindings(item, caseData, linkedDoc?.content);
-  if (linkedEvidence.length) {
-    findings.push(`Related exhibits on file: ${linkedEvidence.join("; ")}`);
-  }
-  const labResults = buildLabResults(item);
+  const findings = generateDetailedFindings(item, caseData, linkedDoc?.content);
+  const labResults = generateLabResults(item);
   const detectiveNotes = buildDetectiveNotes(item);
+
+  const loc = caseData.locations.find((l) => l.evidenceIds.includes(item.id));
 
   return {
     referenceNumber: refNum,
-    collectedAt: caseData.meta.date + " " + (caseData.meta.time ?? ""),
+    collectedAt: `${caseData.meta.date} ${caseData.meta.time ?? ""}`.trim(),
     collectedBy: getCollector(item.type),
     classification: TYPE_LABELS[item.type] ?? "EVIDENCE",
-    summary: item.description,
+    summary: expandSummary(item, caseData),
     findings,
-    chainOfCustody: buildChainOfCustody(item, caseData),
-    examinerNotes: linkedDoc
-      ? `See linked document: ${linkedDoc.title} (${linkedDoc.referenceNumber})`
-      : getExaminerNotes(item),
+    chainOfCustody: generateChainOfCustody(item, caseData),
+    examinerNotes: generateExaminerNotes(item, linkedDoc),
     relatedSubjects: people,
     labResults,
     detectiveNotes,
+    exhibitSpecs: buildExhibitSpecs(item, caseData, loc?.name),
   };
+}
+
+function expandSummary(item: EvidenceItem, caseData: InvestigationCase): string {
+  const base = item.description;
+  const victim = caseData.victim.name;
+  const caseLine = `Recovered in connection with the homicide of ${victim} (${caseData.meta.crimeType}).`;
+  const locLine = item.locationFound ? ` Found at: ${item.locationFound}.` : "";
+  const sig =
+    item.significance === "critical"
+      ? " This exhibit is flagged as critical to the investigation."
+      : item.significance === "red_herring"
+        ? " Investigative note: interpret with caution — may be circumstantial."
+        : "";
+  return `${base} ${caseLine}${locLine}${sig}`.trim();
+}
+
+function buildExhibitSpecs(
+  item: EvidenceItem,
+  caseData: InvestigationCase,
+  locationName?: string
+): Array<{ label: string; value: string }> {
+  return [
+    { label: "Exhibit ID", value: item.id.toUpperCase() },
+    { label: "Case File", value: caseData.meta.title },
+    { label: "Evidence Type", value: item.type.replace("_", " ") },
+    { label: "Recovery Site", value: locationName ?? item.locationFound },
+    { label: "Priority", value: item.significance.replace("_", " ").toUpperCase() },
+    { label: "Storage", value: item.type === "forensic" ? "Lab hold + evidence locker" : "Climate-controlled locker" },
+    { label: "Condition", value: item.hidden ? "Secured / non-obvious recovery" : "Logged and sealed" },
+    { label: "Photographed", value: "Yes — scene and intake photos on file" },
+  ];
 }
 
 function getCollector(type: string): string {
@@ -79,128 +114,6 @@ function getCollector(type: string): string {
     testimony: "Recorded by Investigating Officer",
   };
   return map[type] ?? "Detective Bureau";
-}
-
-function getExaminerNotes(item: EvidenceItem): string {
-  if (item.significance === "critical") {
-    return "PRIORITY EXHIBIT — Critical to establishing motive, opportunity, or method. Handle as primary evidence.";
-  }
-  if (item.significance === "red_herring") {
-    return "Under review — may be circumstantial or misleading. Cross-reference with timeline.";
-  }
-  return "Standard chain of custody maintained. Available for court submission.";
-}
-
-function buildFindings(
-  item: EvidenceItem,
-  caseData: InvestigationCase,
-  docContent?: string
-): string[] {
-  const findings: string[] = [];
-
-  findings.push(`Exhibit recovered from: ${item.locationFound}`);
-  findings.push(`Evidence type: ${item.type.replace("_", " ").toUpperCase()}`);
-  findings.push(`Significance rating: ${item.significance.replace("_", " ").toUpperCase()}`);
-
-  if (item.tags.length > 0) {
-    findings.push(`Tags: ${item.tags.join(", ")}`);
-  }
-
-  // Type-specific detail blocks
-  switch (item.id) {
-    case "ev-briefcase":
-      findings.push(
-        "Black leather briefcase, manufacturer tag: Hartmann Executive Series",
-        "Exterior dent consistent with cylindrical metal impact (tire iron class)",
-        "Latent fingerprints lifted: Daniel Pierce (victim), partial on handle",
-        "Interior: printed financial ledger, Q3–Q4 anomaly report, USB drive (encrypted)",
-        "Blood spatter pattern: arterial spray on latch, contact transfer on base"
-      );
-      break;
-    case "ev-ledger":
-      findings.push(
-        "47 line items flagged for irregular vendor routing",
-        "Vendor 'Northline Consulting' — no physical office on file",
-        "Total irregular transfers: $2,314,880.00 over 14 months",
-        "Domain registration for Northline matches personal email of Marcus Webb",
-        "Pierce annotated margins: 'Present to SEC Monday — non-negotiable'"
-      );
-      break;
-    case "ev-badge":
-      findings.push(
-        "Badge ID EXEC-001 — registered to Marcus Webb, CEO",
-        "Entry swipe: 2026-03-14 22:58:03 — P1 Gate",
-        "No matching exit swipe on executive badge",
-        "Staff vehicle lane camera: silver Tesla Model S, partial plate",
-        "Alibi claim: investor call 22:00–23:30 — CONFLICTS with entry log"
-      );
-      break;
-    case "ev2-container":
-      findings.push(
-        "Container RH-4481 sealed externally, opened from interior",
-        "Victim positioned behind pallet stack — concealment deliberate",
-        "Rope fibers on neck match Berth 7 hawser #12",
-        "Diesel fuel trace on victim's boots — Berth 7 apron",
-        "Container declared weight off by 2 metric tons"
-      );
-      break;
-    case "ev3-glass":
-      findings.push(
-        "Burgundy wine residue — victim's glass only",
-        "Digoxin concentration 40x therapeutic in remaining dregs",
-        "Lip print match: Eleanor Whitmore",
-        "Bitter agent masked by full-bodied wine",
-        "Other place settings test clean — isolated dosing"
-      );
-      break;
-    case "ev4-office":
-      findings.push(
-        "V-shaped accelerant pour from door to desk",
-        "Victim zip-tied to chair — restraint before ignition",
-        "Subdural hematoma predates fire by 2-4 hours",
-        "Dual origin: loading bay (insurance) + office (murder)",
-        "Gasoline additive matches suspect's equipment sample"
-      );
-      break;
-    case "ev5-scene":
-      findings.push(
-        "Single .38 contact-range gunshot — sternum",
-        "Defensive graze on left palm — hands raised",
-        "Emergency exit propped with wood wedge",
-        "Deleted episode file recovered from cloud backup",
-        "Studio door locked from inside — killer used corridor access"
-      );
-      break;
-      // Parse description into finding bullets for generic items
-      if (item.description.length > 80) {
-        findings.push(item.description);
-      }
-  }
-
-  if (docContent) {
-    const lines = docContent.split("\n").filter((l) => l.trim() && !l.startsWith("---"));
-    findings.push(...lines.slice(0, 6).map((l) => l.trim()));
-  }
-
-  return findings;
-}
-
-function buildLabResults(item: EvidenceItem): string[] | undefined {
-  if (item.type !== "forensic" && item.type !== "physical") return undefined;
-
-  const results: string[] = [];
-  if (item.tags.includes("forensic") || item.type === "forensic") {
-    results.push("Sample submitted to Metro Forensic Lab");
-    results.push("Analysis status: COMPLETE");
-  }
-  if (item.id.includes("toxicology") || item.tags.includes("poison")) {
-    results.push("Toxicology: positive for foreign substance — see lab report");
-  }
-  if (item.tags.includes("weapon")) {
-    results.push("Toolmark analysis: MATCH to wound pattern");
-    results.push("DNA: mixed profile consistent with victim + suspect");
-  }
-  return results.length > 0 ? results : undefined;
 }
 
 function buildDetectiveNotes(item: EvidenceItem): string | undefined {
@@ -220,62 +133,4 @@ function buildDetectiveNotes(item: EvidenceItem): string | undefined {
   };
 
   return hints[item.id] ?? `Connect to ${item.relatedPeople.length > 0 ? "linked subjects" : "timeline"} before court submission.`;
-}
-
-function buildChainOfCustody(item: EvidenceItem, caseData: InvestigationCase): string[] {
-  const date = caseData.meta.date;
-  return [
-    `${date} — Recovered at ${item.locationFound} by Crime Scene Unit`,
-    `${date} — Logged into Evidence Locker, tag ${item.id.toUpperCase()}`,
-    `${date} — Photographed, sealed, witness signature obtained`,
-    `Transferred to Detective Bureau — Case ${caseData.meta.title}`,
-    item.type === "forensic" ? `Submitted to Forensic Lab — analysis pending → COMPLETE` : `Held for investigative review`,
-  ];
-}
-
-export function formatEvidenceReport(detail: EvidenceDetail, title: string): string {
-  return `PROPERTY EVIDENCE REPORT
-═══════════════════════════════════════
-
-EXHIBIT: ${title}
-REF: ${detail.referenceNumber}
-CLASSIFICATION: ${detail.classification}
-
-COLLECTED: ${detail.collectedAt}
-COLLECTED BY: ${detail.collectedBy}
-STATUS: LOGGED & SEALED
-
-───────────────────────────────────────
-SUMMARY
-───────────────────────────────────────
-${detail.summary}
-
-───────────────────────────────────────
-DETAILED FINDINGS
-───────────────────────────────────────
-${detail.findings.map((f, i) => `${i + 1}. ${f}`).join("\n")}
-
-${detail.labResults ? `───────────────────────────────────────
-LAB RESULTS
-───────────────────────────────────────
-${detail.labResults.map((r) => `• ${r}`).join("\n")}
-` : ""}
-───────────────────────────────────────
-RELATED SUBJECTS
-───────────────────────────────────────
-${detail.relatedSubjects.length > 0 ? detail.relatedSubjects.map((s) => `• ${s}`).join("\n") : "None linked at time of report"}
-
-───────────────────────────────────────
-CHAIN OF CUSTODY
-───────────────────────────────────────
-${detail.chainOfCustody.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-───────────────────────────────────────
-EXAMINER NOTES
-───────────────────────────────────────
-${detail.examinerNotes}
-${detail.detectiveNotes ? `\nDETECTIVE NOTE: ${detail.detectiveNotes}` : ""}
-
-═══════════════════════════════════════
-END OF REPORT — FOR INVESTIGATIVE USE ONLY`;
 }
