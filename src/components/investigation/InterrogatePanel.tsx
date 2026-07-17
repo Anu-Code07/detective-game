@@ -20,10 +20,12 @@ export function InterrogatePanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const [suspectId, setSuspectId] = useState(caseData.suspects[0]?.id ?? "");
   const [question, setQuestion] = useState("");
@@ -131,7 +133,9 @@ export function InterrogatePanel({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <select
+        {!locked ? (
+          <>
+            <select
           value={evidenceId}
           onChange={(e) => setEvidenceId(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-300"
@@ -157,6 +161,10 @@ export function InterrogatePanel({
             <Send className="w-4 h-4" />
           </button>
         </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500 text-center py-2 font-mono">Case closed — interrogation locked</p>
+        )}
       </div>
     </div>
   );

@@ -9,10 +9,12 @@ export function TimelinePanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const { discoverTimeline, markContradiction } = useGameStore();
   const discovered = new Set(investigation?.discoveredTimeline ?? []);
@@ -59,8 +61,9 @@ export function TimelinePanel({
                 </>
               ) : (
                 <button
-                  onClick={() => discoverTimeline(caseId, event.id)}
-                  className="text-sm text-slate-500 hover:text-amber-400"
+                  onClick={() => !locked && discoverTimeline(caseId, event.id)}
+                  disabled={locked}
+                  className="text-sm text-slate-500 hover:text-amber-400 disabled:opacity-50"
                 >
                   ??? Unknown event — uncover through investigation
                 </button>

@@ -43,6 +43,7 @@ interface GameStore extends PlayerProgress {
   ) => void;
   searchLocation: (caseId: string, locationId: string) => void;
   requestWarrant: (caseId: string, target: string) => void;
+  resetCase: (caseId: string) => void;
 }
 
 function ensureGuestId(): string {
@@ -326,7 +327,7 @@ export const useGameStore = create<GameStore>()(
         if (!caseData) return;
         set((s) => {
           const inv = s.investigations[caseId];
-          if (!inv) return s;
+          if (!inv || inv.completed) return s;
           const withAccusation = {
             ...inv,
             chargesheetSubmitted: true,
@@ -347,6 +348,21 @@ export const useGameStore = create<GameStore>()(
             activeTab: "verdict" as DashboardTab,
           };
         });
+      },
+
+      resetCase: (caseId) => {
+        const caseData = getCaseById(caseId);
+        if (!caseData) return;
+        const state = createInitialState(caseId, caseData);
+        set((s) => ({
+          completedCases: s.completedCases.filter((id) => id !== caseId),
+          caseScores: Object.fromEntries(
+            Object.entries(s.caseScores).filter(([id]) => id !== caseId)
+          ),
+          investigations: { ...s.investigations, [caseId]: state },
+          activeCaseId: caseId,
+          activeTab: "overview",
+        }));
       },
     }),
     {

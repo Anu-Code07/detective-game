@@ -8,10 +8,12 @@ export function ChargesheetPanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const { submitAccusation } = useGameStore();
   const discovered = new Set(investigation?.discoveredEvidence ?? []);
@@ -20,6 +22,7 @@ export function ChargesheetPanel({
   const [summary, setSummary] = useState("");
 
   const evidenceOptions = caseData.evidence.filter((e) => discovered.has(e.id));
+  const accusation = investigation?.finalAccusation;
 
   function toggleEvidence(id: string) {
     setSelectedEvidence((prev) =>
@@ -37,6 +40,57 @@ export function ChargesheetPanel({
     });
   }
 
+  if (locked && accusation) {
+    const accused = caseData.suspects.find((s) => s.id === accusation.accusedId);
+    const evidenceList = accusation.evidence
+      .map((id) => caseData.evidence.find((e) => e.id === id)?.title)
+      .filter(Boolean);
+
+    const report = `POLICE CHARGESHEET — FINAL SUBMISSION
+═══════════════════════════════════════
+
+CASE: ${caseData.meta.title}
+REF: CF-${String(caseData.meta.order).padStart(2, "0")}-CHARGE
+SUBMITTED: ${new Date(accusation.submittedAt).toLocaleString()}
+
+───────────────────────────────────────
+ACCUSED
+───────────────────────────────────────
+Name: ${accused?.name ?? "Unknown"}
+Occupation: ${accused?.occupation ?? "N/A"}
+
+───────────────────────────────────────
+CHARGES
+───────────────────────────────────────
+${accusation.charges.map((c, i) => `${i + 1}. ${c}`).join("\n")}
+
+───────────────────────────────────────
+SUPPORTING EXHIBITS
+───────────────────────────────────────
+${evidenceList.map((e, i) => `${i + 1}. ${e}`).join("\n")}
+
+───────────────────────────────────────
+INVESTIGATION SUMMARY
+───────────────────────────────────────
+${accusation.summary}
+
+───────────────────────────────────────
+VICTIM
+───────────────────────────────────────
+${caseData.victim.name}, ${caseData.victim.age} — ${caseData.victim.occupation}
+Cause of Death: ${caseData.victim.causeOfDeath}
+
+═══════════════════════════════════════
+SUBMITTED TO COURT — ${investigation?.verdict?.success ? "CASE CLOSED" : "PENDING REVIEW"}`;
+
+    return (
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold">Submitted Chargesheet</h2>
+        <div className="doc-paper whitespace-pre-wrap text-xs leading-relaxed">{report}</div>
+      </div>
+    );
+  }
+
   if (investigation?.chargesheetSubmitted) {
     return (
       <div className="glass-panel p-6 text-center">
@@ -50,7 +104,7 @@ export function ChargesheetPanel({
     <div className="space-y-6 max-w-2xl">
       <h2 className="text-xl font-bold">Prepare Chargesheet</h2>
       <p className="text-sm text-slate-400">
-        Select the accused, supporting evidence, and write your investigation summary. You need critical proof.
+        Select the accused, supporting evidence, and write your investigation summary.
       </p>
 
       <div>

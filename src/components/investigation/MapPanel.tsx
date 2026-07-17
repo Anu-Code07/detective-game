@@ -10,10 +10,12 @@ export function MapPanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const { searchLocation, unlockLocation } = useGameStore();
   const unlocked = new Set(investigation?.unlockedLocations ?? []);
@@ -38,9 +40,10 @@ export function MapPanel({
             <button
               key={loc.id}
               onClick={() => {
-                if (isUnlocked) searchLocation(caseId, loc.id);
-                else unlockLocation(caseId, loc.id);
+                if (!locked && isUnlocked) searchLocation(caseId, loc.id);
+                else if (!locked) unlockLocation(caseId, loc.id);
               }}
+              disabled={locked}
               style={{ left: `${loc.coordinates.x}%`, top: `${loc.coordinates.y}%` }}
               className={cn(
                 "absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group",
@@ -74,7 +77,8 @@ export function MapPanel({
               <p className="text-sm text-slate-400 mb-3">{loc.description}</p>
               {isUnlocked ? (
                 <button
-                  onClick={() => searchLocation(caseId, loc.id)}
+                  onClick={() => !locked && searchLocation(caseId, loc.id)}
+                  disabled={locked}
                   className={cn(
                     "inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg",
                     isSearched ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"

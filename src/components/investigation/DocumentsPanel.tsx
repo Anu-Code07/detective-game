@@ -11,10 +11,12 @@ export function DocumentsPanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const { unlockDocument, requestWarrant } = useGameStore();
@@ -32,8 +34,9 @@ export function DocumentsPanel({
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Case Documents</h2>
         <button
-          onClick={() => requestWarrant(caseId, "financial and forensic")}
-          className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+          onClick={() => !locked && requestWarrant(caseId, "financial and forensic")}
+          disabled={locked}
+          className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40"
         >
           Request Warrant
         </button>

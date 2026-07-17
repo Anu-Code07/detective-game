@@ -21,10 +21,12 @@ export function CaseBoardPanel({
   caseData,
   investigation,
   caseId,
+  locked = false,
 }: {
   caseData: InvestigationCase;
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const { addBoardConnection } = useGameStore();
   const discovered = useMemo(
@@ -83,12 +85,12 @@ export function CaseBoardPanel({
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
+      if (locked || !connection.source || !connection.target) return;
       const label = "possible link";
       addBoardConnection(caseId, connection.source, connection.target, label);
       setEdges((eds) => addEdge({ ...connection, label, style: { stroke: "#f59e0b80" } }, eds));
     },
-    [caseId, addBoardConnection, setEdges]
+    [caseId, addBoardConnection, setEdges, locked]
   );
 
   return (

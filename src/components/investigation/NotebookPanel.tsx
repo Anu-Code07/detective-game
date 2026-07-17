@@ -21,9 +21,11 @@ const CAT_COLORS: Record<string, string> = {
 export function NotebookPanel({
   investigation,
   caseId,
+  locked = false,
 }: {
   investigation: InvestigationState | null;
   caseId: string;
+  locked?: boolean;
 }) {
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -64,9 +66,11 @@ export function NotebookPanel({
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Write observations, theories, questions..."
-          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm min-h-[80px] focus:outline-none focus:border-amber-500/50 resize-none"
+          placeholder={locked ? "Case closed — notes locked" : "Write observations, theories, questions..."}
+          disabled={locked}
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm min-h-[80px] focus:outline-none focus:border-amber-500/50 resize-none disabled:opacity-50"
         />
+        {!locked && (
         <button
           onClick={saveNote}
           disabled={loading || !note.trim()}
@@ -74,6 +78,7 @@ export function NotebookPanel({
         >
           Save
         </button>
+        )}
       </div>
 
       {grouped.length === 0 ? (
