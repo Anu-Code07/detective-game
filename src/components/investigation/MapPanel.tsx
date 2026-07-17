@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import { MapPin, Search } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
@@ -17,13 +18,27 @@ export function MapPanel({
   caseId: string;
   locked?: boolean;
 }) {
-  const { searchLocation, unlockLocation } = useGameStore();
+  const { searchLocation, unlockLocation, focusLocationId, navigationHint } = useGameStore();
   const unlocked = new Set(investigation?.unlockedLocations ?? []);
   const searched = new Set(investigation?.searchesCompleted ?? []);
+
+  useEffect(() => {
+    if (focusLocationId) {
+      const el = document.getElementById(`map-loc-${focusLocationId}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusLocationId]);
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Investigation Map</h2>
+
+      {navigationHint && focusLocationId && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
+          {navigationHint}
+        </div>
+      )}
       <div className="relative rounded-2xl overflow-hidden border border-white/10">
         <Image
           src={caseData.meta.coverImage}
@@ -39,6 +54,7 @@ export function MapPanel({
           return (
             <button
               key={loc.id}
+              id={`map-loc-${loc.id}`}
               onClick={() => {
                 if (!locked && isUnlocked) searchLocation(caseId, loc.id);
                 else if (!locked) unlockLocation(caseId, loc.id);
@@ -47,12 +63,14 @@ export function MapPanel({
               style={{ left: `${loc.coordinates.x}%`, top: `${loc.coordinates.y}%` }}
               className={cn(
                 "absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 group",
-                !isUnlocked && "opacity-50"
+                !isUnlocked && "opacity-50",
+                focusLocationId === loc.id && "z-10"
               )}
             >
               <span
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-transform group-hover:scale-110",
+                  focusLocationId === loc.id && "ring-2 ring-amber-400 ring-offset-2 ring-offset-[#060a12] scale-110",
                   isSearched ? "bg-emerald-500/30 border-emerald-400" : "bg-amber-500/30 border-amber-400"
                 )}
               >

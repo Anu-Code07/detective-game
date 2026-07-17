@@ -31,10 +31,12 @@ const EMOTION_BG: Record<string, string> = {
 
 function buildSuggestedQuestions(
   caseData: InvestigationCase,
-  suspectId: string,
+  personId: string,
   evidenceTitle?: string
 ): string[] {
-  const suspect = caseData.suspects.find((s) => s.id === suspectId);
+  const person =
+    caseData.suspects.find((s) => s.id === personId) ??
+    caseData.witnesses.find((w) => w.id === personId);
   const victim = caseData.victim.name;
   const suggestions = [
     `Where were you when ${victim} died?`,
@@ -49,8 +51,18 @@ function buildSuggestedQuestions(
     suggestions.unshift(`What do you know about ${evidenceTitle}?`);
   }
 
-  if (suspect?.relationships[victim]) {
+  if (person?.relationships[victim]) {
     suggestions.push(`You knew ${victim} well. What weren't you telling us?`);
+  }
+
+  if (person?.role === "witness") {
+    return [
+      "What did you see or hear that night?",
+      "Who else was near the scene?",
+      "Did you notice anything unusual with security or access?",
+      "Walk me through your shift step by step.",
+      ...(evidenceTitle ? [`What can you tell me about ${evidenceTitle}?`] : []),
+    ].slice(0, 6);
   }
 
   return suggestions.slice(0, 6);
@@ -67,16 +79,33 @@ export function InterrogatePanel({
   caseId: string;
   locked?: boolean;
 }) {
-  const [suspectId, setSuspectId] = useState(caseData.suspects[0]?.id ?? "");
+  const interviewees = useMemo(
+    () => [
+      ...caseData.suspects.map((s) => ({ ...s, roleLabel: "Suspect" as const })),
+      ...caseData.witnesses.map((w) => ({ ...w, roleLabel: "Witness" as const })),
+    ],
+    [caseData]
+  );
+
+  const [suspectId, setSuspectId] = useState(interviewees[0]?.id ?? "");
   const [question, setQuestion] = useState("");
   const [evidenceId, setEvidenceId] = useState("");
   const [loading, setLoading] = useState(false);
   const [unlockToast, setUnlockToast] = useState<string | null>(null);
   const [showEvidencePicker, setShowEvidencePicker] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const { addInterrogationMessage, incrementQuestions, tryInterrogationUnlock } = useGameStore();
+  const {
+    addInterrogationMessage,
+    incrementQuestions,
+    tryInterrogationUnlock,
+    focusSuspectId,
+    navigationHint,
+  } = useGameStore();
 
-  const suspect = caseData.suspects.find((s) => s.id === suspectId);
+  const suspect =
+    caseData.suspects.find((s) => s.id === suspectId) ??
+    caseData.witnesses.find((w) => w.id === suspectId);
+  const suspectRole = interviewees.find((p) => p.id === suspectId)?.roleLabel ?? "Suspect";
   const history = investigation?.interrogations[suspectId] ?? [];
   const discovered = new Set(investigation?.discoveredEvidence ?? []);
   const evidenceOptions = caseData.evidence.filter(
@@ -100,6 +129,12 @@ export function InterrogatePanel({
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history.length, loading]);
+
+  useEffect(() => {
+    if (focusSuspectId && interviewees.some((p) => p.id === focusSuspectId)) {
+      setSuspectId(focusSuspectId);
+    }
+  }, [focusSuspectId, interviewees]);
 
   async function ask(overrideQuestion?: string) {
     const q = (overrideQuestion ?? question).trim();
@@ -202,8 +237,15 @@ export function InterrogatePanel({
         </motion.div>
       )}
 
+      {navigationHint && focusSuspectId === suspectId && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
+          {navigationHint}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        {caseData.suspects.map((s) => (
+        {interviewees.map((s) => (
           <button
             key={s.id}
             onClick={() => setSuspectId(s.id)}
@@ -211,10 +253,12 @@ export function InterrogatePanel({
               "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
               suspectId === s.id
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                : "glass-panel"
+                : "glass-panel",
+              focusSuspectId === s.id && suspectId !== s.id && "border-amber-500/20"
             )}
           >
-            {s.name}
+            <span className="block">{s.name}</span>
+            <span className="text-[9px] font-mono text-slate-500 uppercase">{s.roleLabel}</span>
           </button>
         ))}
       </div>
@@ -228,7 +272,7 @@ export function InterrogatePanel({
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-slate-100">{suspect.name}</p>
-              <p className="text-xs text-slate-400">{suspect.age} · {suspect.occupation}</p>
+              <p className="text-xs text-slate-400">{suspect.age} · {suspect.occupation} · {suspectRole}</p>
               <p className="text-xs text-slate-500 mt-1 line-clamp-2">{suspect.personality}</p>
             </div>
           </div>

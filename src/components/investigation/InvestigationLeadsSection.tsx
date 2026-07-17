@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, CheckCircle2, HelpCircle, Lock, XCircle } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import type { EvidenceUnlockLead } from "@/lib/case-engine/evidence-unlocks";
 import {
   getAvailableLeads,
-  getLeadForEvidence,
   getPendingLeads,
 } from "@/lib/case-engine/evidence-unlocks";
 import { useGameStore } from "@/store/game-store";
@@ -17,14 +16,23 @@ function LeadCard({
   lead,
   caseId,
   evidenceTitle,
+  highlighted,
 }: {
   lead: EvidenceUnlockLead;
   caseId: string;
   evidenceTitle: string;
+  highlighted?: boolean;
 }) {
   const { solveLeadAnswer } = useGameStore();
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<"correct" | "wrong" | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlighted]);
 
   function submit() {
     if (selected === null || result) return;
@@ -40,11 +48,14 @@ function LeadCard({
 
   return (
     <motion.div
+      ref={cardRef}
+      id={`lead-${lead.id}`}
       layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "glass-panel p-4 border space-y-3",
+        "glass-panel p-4 border space-y-3 transition-all duration-500",
+        highlighted && "border-amber-500/60 ring-2 ring-amber-500/30 bg-amber-500/5",
         result === "correct" && "border-emerald-500/40 bg-emerald-500/5",
         result === "wrong" && "border-red-500/30 bg-red-500/5"
       )}
@@ -138,6 +149,8 @@ export function InvestigationLeadsSection({
   investigation: InvestigationState | null;
   caseId: string;
 }) {
+  const { focusLeadId, navigationHint } = useGameStore();
+
   if (!investigation) return null;
 
   const state = { ...investigation, solvedLeads: investigation.solvedLeads ?? [] };
@@ -147,7 +160,7 @@ export function InvestigationLeadsSection({
   if (available.length === 0 && pending.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" id="investigation-leads">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
@@ -161,6 +174,12 @@ export function InvestigationLeadsSection({
         <span className="text-xs font-mono text-amber-400/80">{available.length} active</span>
       </div>
 
+      {navigationHint && focusLeadId && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          {navigationHint}
+        </div>
+      )}
+
       {available.length > 0 && (
         <div className="space-y-3">
           {available.map((lead) => (
@@ -169,6 +188,7 @@ export function InvestigationLeadsSection({
               lead={lead}
               caseId={caseId}
               evidenceTitle={caseData.evidence.find((e) => e.id === lead.evidenceId)?.title ?? "Exhibit"}
+              highlighted={focusLeadId === lead.id}
             />
           ))}
         </div>
@@ -177,7 +197,7 @@ export function InvestigationLeadsSection({
       {pending.length > 0 && (
         <div className="space-y-2">
           <p className="text-[10px] font-mono text-slate-500 uppercase">Locked leads — gather more evidence first</p>
-          {pending.slice(0, 4).map((lead) => {
+          {pending.map((lead) => {
             const missing = (lead.requiresEvidence ?? []).filter(
               (id) => !state.discoveredEvidence.includes(id)
             );
@@ -200,12 +220,4 @@ export function InvestigationLeadsSection({
       )}
     </div>
   );
-}
-
-export function getLockedEvidenceHint(
-  caseId: string,
-  evidenceId: string
-): string | undefined {
-  const lead = getLeadForEvidence(caseId, evidenceId);
-  return lead ? `Solve lead: "${lead.title}"` : undefined;
 }

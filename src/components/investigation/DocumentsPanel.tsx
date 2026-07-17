@@ -20,7 +20,7 @@ export function DocumentsPanel({
   locked?: boolean;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
-  const { unlockDocument, requestWarrant } = useGameStore();
+  const { unlockDocument, requestWarrant, navigationHint } = useGameStore();
   const unlocked = new Set(investigation?.unlockedDocuments ?? []);
 
   const docs = caseData.documents.map((d) => ({
@@ -37,11 +37,18 @@ export function DocumentsPanel({
         <button
           onClick={() => !locked && requestWarrant(caseId, "financial and forensic")}
           disabled={locked}
-          className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40"
+          className="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 disabled:opacity-40 ring-2 ring-transparent focus:ring-amber-500/40"
         >
           Request Warrant
         </button>
       </div>
+
+      {navigationHint && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-200">
+          <span className="font-mono uppercase text-[10px] text-amber-400 block mb-1">Objective</span>
+          {navigationHint}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="space-y-2 lg:col-span-1 max-h-[60vh] overflow-y-auto scrollbar-thin">

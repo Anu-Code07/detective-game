@@ -1,4 +1,4 @@
-import type { InvestigationCase, InvestigationState } from "@/types/case";
+import type { DashboardTab, InvestigationCase, InvestigationState } from "@/types/case";
 
 export interface EvidenceUnlockLead {
   id: string;
@@ -427,4 +427,196 @@ export function getLeadForEvidence(caseId: string, evidenceId: string): Evidence
 
 export function getEvidenceTitle(caseData: InvestigationCase, evidenceId: string): string {
   return caseData.evidence.find((e) => e.id === evidenceId)?.title ?? "Unknown exhibit";
+}
+
+export interface UnlockDestination {
+  tab: DashboardTab;
+  leadId?: string;
+  suspectId?: string;
+  locationId?: string;
+  evidenceId?: string;
+  hint: string;
+  actionLabel: string;
+}
+
+function getPersonName(caseData: InvestigationCase, personId?: string): string {
+  if (!personId) return "witness";
+  return (
+    [...caseData.suspects, ...caseData.witnesses].find((p) => p.id === personId)?.name ?? "contact"
+  );
+}
+
+function findPersonId(caseData: InvestigationCase, condition: string): string | undefined {
+  const lower = condition.toLowerCase();
+  const people = [...caseData.suspects, ...caseData.witnesses];
+
+  for (const p of people) {
+    const nameParts = p.name.toLowerCase().split(/\s+/);
+    if (nameParts.some((part) => part.length > 3 && lower.includes(part))) return p.id;
+    if (lower.includes(p.occupation.toLowerCase().slice(0, 8))) return p.id;
+  }
+
+  if (/security|guard|supervisor/.test(lower)) {
+    return caseData.witnesses.find(
+      (w) => w.id.includes("guard") || w.occupation.toLowerCase().includes("security")
+    )?.id;
+  }
+  if (/producer|engineer|chef|contractor|operator/.test(lower)) {
+    const roleMatch = people.find((p) =>
+      lower.includes(p.occupation.toLowerCase().split(/[\s,]+/)[0] ?? "")
+    );
+    if (roleMatch) return roleMatch.id;
+  }
+
+  return people[0]?.id;
+}
+
+function findLocationId(caseData: InvestigationCase, evidenceId: string, condition: string): string | undefined {
+  const byEvidence = caseData.locations.find((l) => l.evidenceIds.includes(evidenceId));
+  if (byEvidence) return byEvidence.id;
+
+  const lower = condition.toLowerCase();
+  return caseData.locations.find(
+    (l) =>
+      lower.includes(l.name.toLowerCase()) ||
+      lower.includes(l.address.toLowerCase()) ||
+      l.description.toLowerCase().split(/\s+/).some((w) => w.length > 4 && lower.includes(w))
+  )?.id;
+}
+
+function leadIsAvailable(lead: EvidenceUnlockLead, state: InvestigationState): boolean {
+  const discovered = new Set(state.discoveredEvidence);
+  const timeline = new Set(state.discoveredTimeline);
+  const evidenceOk = !lead.requiresEvidence || lead.requiresEvidence.every((id) => discovered.has(id));
+  const timelineOk = !lead.requiresTimeline || lead.requiresTimeline.every((id) => timeline.has(id));
+  return evidenceOk && timelineOk;
+}
+
+/** Where the player should go to unlock a sealed exhibit */
+export function getUnlockDestination(
+  caseData: InvestigationCase,
+  state: InvestigationState,
+  evidenceId: string,
+  depth = 0
+): UnlockDestination {
+  const stateNorm = { ...state, solvedLeads: state.solvedLeads ?? [] };
+  const ev = caseData.evidence.find((e) => e.id === evidenceId);
+  const lead = getLeadForEvidence(caseData.meta.id, evidenceId);
+  const cond = ev?.unlockCondition ?? "";
+
+  if (lead && depth < 4) {
+    const missing = (lead.requiresEvidence ?? []).filter(
+      (id) => !stateNorm.discoveredEvidence.includes(id)
+    );
+    if (missing.length > 0) {
+      const prereq = getUnlockDestination(caseData, state, missing[0], depth + 1);
+      const prereqTitle = getEvidenceTitle(caseData, missing[0]);
+      return {
+        ...prereq,
+        evidenceId: missing[0],
+        hint: `First recover "${prereqTitle}" — ${prereq.hint}`,
+        actionLabel: `Step 1: ${prereq.actionLabel}`,
+      };
+    }
+
+    if (leadIsAvailable(lead, stateNorm)) {
+      const suspectId = lead.interrogationTriggers?.[0]?.suspectId;
+      const personName = getPersonName(caseData, suspectId);
+      const lower = cond.toLowerCase();
+
+      if (/warrant|financial|subpoena/.test(lower) && stateNorm.warrantsRequested.length === 0) {
+        return {
+          tab: "documents",
+          leadId: lead.id,
+          hint: "Request a warrant in Documents, then return to solve the lead",
+          actionLabel: "Documents → Request Warrant",
+        };
+      }
+
+      if (/search|alley|sweep|scene/.test(lower)) {
+        const locationId = findLocationId(caseData, evidenceId, cond);
+        if (locationId) {
+          return {
+            tab: "map",
+            leadId: lead.id,
+            locationId,
+            hint: cond || lead.title,
+            actionLabel: `Map → Search location`,
+          };
+        }
+      }
+
+      if (suspectId && /interview|interrogate|press|ask/.test(lower)) {
+        return {
+          tab: "interrogate",
+          leadId: lead.id,
+          suspectId,
+          hint: `Ask ${personName} about ${lead.title.toLowerCase()}`,
+          actionLabel: `Interrogate ${personName}`,
+        };
+      }
+
+      if (suspectId && lead.interrogationTriggers?.length) {
+        return {
+          tab: "interrogate",
+          leadId: lead.id,
+          suspectId,
+          hint: `Or answer the deduction lead on Evidence tab`,
+          actionLabel: `Interrogate ${personName}`,
+        };
+      }
+
+      return {
+        tab: "evidence",
+        leadId: lead.id,
+        hint: lead.context.slice(0, 120) + "...",
+        actionLabel: `Solve lead: ${lead.title}`,
+      };
+    }
+  }
+
+  const lower = cond.toLowerCase();
+
+  if (/interview|interrogate|press|ask/.test(lower)) {
+    const suspectId = findPersonId(caseData, cond);
+    return {
+      tab: "interrogate",
+      suspectId,
+      hint: cond,
+      actionLabel: suspectId ? `Interrogate ${getPersonName(caseData, suspectId)}` : "Go to Interrogate",
+    };
+  }
+
+  if (/warrant|financial|subpoena|records|phone|probation/.test(lower)) {
+    return {
+      tab: "documents",
+      hint: cond,
+      actionLabel: "Documents → Request Warrant",
+    };
+  }
+
+  if (/search|sweep|scene|alley|bedroom|location|map/.test(lower)) {
+    const locationId = findLocationId(caseData, evidenceId, cond);
+    return {
+      tab: "map",
+      locationId,
+      hint: cond,
+      actionLabel: "Map → Search location",
+    };
+  }
+
+  if (/timeline|autopsy/.test(lower)) {
+    return { tab: "timeline", hint: cond, actionLabel: "Open Timeline" };
+  }
+
+  if (/lab|forensic|ballistics|toxicology|submit|process/.test(lower)) {
+    return { tab: "evidence", hint: cond, actionLabel: "Solve investigation lead" };
+  }
+
+  return {
+    tab: "evidence",
+    leadId: lead?.id,
+    hint: cond || "Review investigation leads",
+    actionLabel: lead ? `Solve lead: ${lead.title}` : "View investigation leads",
+  };
 }

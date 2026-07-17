@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, ChevronRight, Search } from "lucide-react";
+import { ArrowRight, Lock, ChevronRight } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { cn } from "@/lib/utils";
 import { getEvidenceImage } from "@/lib/evidence-images";
-import { getLeadForEvidence } from "@/lib/case-engine/evidence-unlocks";
+import { getLeadForEvidence, getUnlockDestination } from "@/lib/case-engine/evidence-unlocks";
+import { useGameStore } from "@/store/game-store";
 import { EvidenceThumbnail } from "./EvidenceThumbnail";
 import { EvidenceDetailSheet } from "./EvidenceDetailSheet";
 import { InvestigationLeadsSection } from "./InvestigationLeadsSection";
@@ -27,12 +28,17 @@ export function EvidencePanel({
   caseId: string;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { navigateToUnlock } = useGameStore();
   const discovered = new Set(investigation?.discoveredEvidence ?? []);
 
   const items = caseData.evidence.map((e) => ({
     ...e,
     found: discovered.has(e.id) || e.discoveredByDefault,
     lead: e.hidden ? getLeadForEvidence(caseData.meta.id, e.id) : undefined,
+    destination:
+      investigation && !discovered.has(e.id) && !e.discoveredByDefault
+        ? getUnlockDestination(caseData, investigation, e.id)
+        : null,
   }));
 
   const recovered = items.filter((i) => i.found);
@@ -45,7 +51,7 @@ export function EvidencePanel({
         <div>
           <h2 className="text-xl font-bold">Evidence Locker</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Solve investigation leads or interrogate smartly to recover sealed exhibits
+            Tap sealed exhibits to go where you need to unlock them
           </p>
         </div>
         <span className="text-sm font-mono text-slate-500">
@@ -91,27 +97,32 @@ export function EvidencePanel({
         <div className="space-y-2">
           <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Sealed Exhibits</p>
           {sealed.map((item) => (
-            <div
+            <button
               key={item.id}
-              className="w-full glass-panel p-3 sm:p-4 flex items-center gap-3 opacity-70"
+              type="button"
+              onClick={() => navigateToUnlock(caseId, item.id)}
+              className={cn(
+                "w-full text-left glass-panel p-3 sm:p-4 flex items-center gap-3 transition-all",
+                "hover:bg-amber-500/5 hover:border-amber-500/30 border border-transparent cursor-pointer group active:scale-[0.99]"
+              )}
             >
-              <div className="w-14 h-14 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                <Lock className="w-5 h-5 text-slate-600" />
+              <div className="w-14 h-14 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:border-amber-500/30 group-hover:bg-amber-500/10 transition-colors">
+                <Lock className="w-5 h-5 text-slate-600 group-hover:text-amber-400 transition-colors" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-slate-500 font-medium">{item.title}</p>
-                {item.lead ? (
-                  <p className="text-[10px] text-amber-400/70 mt-0.5 flex items-center gap-1">
-                    <Search className="w-3 h-3" />
-                    Lead: {item.lead.title}
+                <p className="text-sm text-slate-400 font-medium group-hover:text-slate-200 transition-colors">
+                  {item.title}
+                </p>
+                <p className="text-[10px] text-slate-600 mt-0.5">Sealed — tap to find how to unlock</p>
+                {item.destination && (
+                  <p className="text-[10px] text-amber-400/80 mt-1 flex items-center gap-1 group-hover:text-amber-300">
+                    <ArrowRight className="w-3 h-3 flex-shrink-0" />
+                    {item.destination.actionLabel}
                   </p>
-                ) : (
-                  item.unlockCondition && (
-                    <p className="text-[10px] text-slate-600 mt-0.5">{item.unlockCondition}</p>
-                  )
                 )}
               </div>
-            </div>
+              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-amber-400 flex-shrink-0 transition-colors" />
+            </button>
           ))}
         </div>
       )}

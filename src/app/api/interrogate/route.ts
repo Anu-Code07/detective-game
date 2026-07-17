@@ -69,9 +69,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Case not found" }, { status: 404 });
     }
 
-    const suspect = caseData.suspects.find((s) => s.id === suspectId);
-    if (!suspect) {
-      return NextResponse.json({ error: "Suspect not found" }, { status: 404 });
+    const person =
+      caseData.suspects.find((s) => s.id === suspectId) ??
+      caseData.witnesses.find((w) => w.id === suspectId);
+    if (!person) {
+      return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
 
     const presentedEvidence = presentedEvidenceId
@@ -87,7 +89,7 @@ export async function POST(req: NextRequest) {
     );
 
     const { reply, emotionalState } = await generateSuspectReply({
-      suspect,
+      suspect: person,
       question: question.trim(),
       history,
       presentedEvidence,

@@ -12,6 +12,7 @@ import type {
 import { createInitialState, discoverEvidence, evaluateVerdict, unlockDocument } from "@/lib/case-engine/engine";
 import {
   getLeadsForCase,
+  getUnlockDestination,
   matchInterrogationUnlock,
   validateLeadAnswer,
   type EvidenceUnlockLead,
@@ -23,8 +24,14 @@ interface GameStore extends PlayerProgress {
   activeCaseId: string | null;
   activeTab: DashboardTab;
   guestId: string;
+  focusLeadId: string | null;
+  focusSuspectId: string | null;
+  focusLocationId: string | null;
+  navigationHint: string | null;
   setActiveCase: (caseId: string) => void;
   setActiveTab: (tab: DashboardTab) => void;
+  clearNavigationFocus: () => void;
+  navigateToUnlock: (caseId: string, evidenceId: string) => void;
   getInvestigation: (caseId: string) => InvestigationState | null;
   startCase: (caseId: string) => void;
   discoverItem: (caseId: string, evidenceId: string) => void;
@@ -109,9 +116,36 @@ export const useGameStore = create<GameStore>()(
       activeCaseId: null,
       activeTab: "overview",
       guestId: "",
+      focusLeadId: null,
+      focusSuspectId: null,
+      focusLocationId: null,
+      navigationHint: null,
 
       setActiveCase: (caseId) => set({ activeCaseId: caseId }),
       setActiveTab: (tab) => set({ activeTab: tab }),
+
+      clearNavigationFocus: () =>
+        set({
+          focusLeadId: null,
+          focusSuspectId: null,
+          focusLocationId: null,
+          navigationHint: null,
+        }),
+
+      navigateToUnlock: (caseId, evidenceId) => {
+        const caseData = getCaseById(caseId);
+        const inv = get().investigations[caseId];
+        if (!caseData || !inv) return;
+
+        const dest = getUnlockDestination(caseData, inv, evidenceId);
+        set({
+          activeTab: dest.tab,
+          focusLeadId: dest.leadId ?? null,
+          focusSuspectId: dest.suspectId ?? null,
+          focusLocationId: dest.locationId ?? null,
+          navigationHint: dest.hint,
+        });
+      },
 
       getInvestigation: (caseId) => get().investigations[caseId] ?? null,
 
