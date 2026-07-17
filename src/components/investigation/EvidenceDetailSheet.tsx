@@ -1,11 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Fingerprint, FileText } from "lucide-react";
 import type { EvidenceItem, InvestigationCase } from "@/types/case";
+import { getEvidenceImage } from "@/lib/evidence-images";
 import { buildEvidenceDetail, formatEvidenceReport } from "@/lib/case-engine/evidence-detail";
 import { cn } from "@/lib/utils";
+import { EvidenceThumbnail } from "./EvidenceThumbnail";
 
 const sigColors = {
   critical: "text-red-300 bg-red-500/15 border-red-500/30",
@@ -17,11 +18,13 @@ const sigColors = {
 export function EvidenceDetailSheet({
   item,
   caseData,
+  imageSrc,
   open,
   onClose,
 }: {
   item: EvidenceItem | null;
   caseData: InvestigationCase;
+  imageSrc?: string;
   open: boolean;
   onClose: () => void;
 }) {
@@ -29,6 +32,7 @@ export function EvidenceDetailSheet({
 
   const detail = buildEvidenceDetail(item, caseData);
   const report = formatEvidenceReport(detail, item.title);
+  const src = imageSrc ?? getEvidenceImage(item, caseData.meta);
 
   return (
     <AnimatePresence>
@@ -48,7 +52,6 @@ export function EvidenceDetailSheet({
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="fixed inset-x-0 bottom-0 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:w-full md:max-w-2xl z-[70] max-h-[92vh] md:max-h-[85vh] flex flex-col rounded-t-2xl md:rounded-2xl bg-[#0c1220] border border-white/10 shadow-2xl safe-bottom"
           >
-            {/* Header */}
             <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10 flex-shrink-0">
               <div className="min-w-0">
                 <p className="text-[10px] font-mono text-amber-400/80 uppercase tracking-widest mb-1">
@@ -57,26 +60,26 @@ export function EvidenceDetailSheet({
                 <h3 className="font-bold text-lg leading-tight">{item.title}</h3>
                 <p className="text-xs font-mono text-slate-500 mt-1">{detail.referenceNumber}</p>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 flex-shrink-0"
-                aria-label="Close"
-              >
+              <button onClick={onClose} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 flex-shrink-0" aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Body */}
             <div className="overflow-y-auto flex-1 scrollbar-thin">
-              {item.image && (
-                <div className="relative h-44 sm:h-52 border-b border-white/5">
-                  <Image src={item.image} alt={item.title} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0c1220] to-transparent" />
-                  <span className="absolute bottom-3 left-4 text-[10px] font-mono bg-black/60 px-2 py-1 rounded text-slate-300">
-                    EXHIBIT PHOTO — CRIME SCENE UNIT
-                  </span>
-                </div>
-              )}
+              <div className="relative w-full h-44 sm:h-52 border-b border-white/5 bg-black/40 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={item.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = caseData.meta.coverImage;
+                  }}
+                />
+                <span className="absolute bottom-3 left-4 text-[10px] font-mono bg-black/70 px-2 py-1 rounded text-slate-300">
+                  EXHIBIT PHOTO
+                </span>
+              </div>
 
               <div className="p-4 space-y-4">
                 <div className="flex flex-wrap gap-2">
@@ -93,7 +96,6 @@ export function EvidenceDetailSheet({
                   ))}
                 </div>
 
-                {/* Official report paper */}
                 <div className="doc-paper whitespace-pre-wrap text-xs leading-relaxed max-h-none">
                   {report}
                 </div>

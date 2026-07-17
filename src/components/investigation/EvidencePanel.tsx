@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, ChevronRight, Package } from "lucide-react";
+import { Lock, ChevronRight } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
+import { getEvidenceImage } from "@/lib/evidence-images";
 import { cn } from "@/lib/utils";
 import { EvidenceDetailSheet } from "./EvidenceDetailSheet";
+import { EvidenceThumbnail } from "./EvidenceThumbnail";
 
 const sigDot = {
   critical: "bg-red-400",
@@ -23,11 +25,11 @@ export function EvidencePanel({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const discovered = new Set(investigation?.discoveredEvidence ?? []);
-  const isClosed = investigation?.completed === true;
 
   const items = caseData.evidence.map((e) => ({
     ...e,
     found: discovered.has(e.id) || e.discoveredByDefault,
+    displayImage: getEvidenceImage(e, caseData.meta),
   }));
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -52,13 +54,15 @@ export function EvidencePanel({
             disabled={!item.found}
             className={cn(
               "w-full text-left glass-panel p-3 sm:p-4 flex items-center gap-3 transition-all",
-              item.found ? "hover:bg-white/[0.06] hover:border-amber-500/20 active:scale-[0.99] cursor-pointer" : "opacity-50 cursor-not-allowed"
+              item.found
+                ? "hover:bg-white/[0.06] hover:border-amber-500/20 active:scale-[0.99] cursor-pointer"
+                : "opacity-50 cursor-not-allowed"
             )}
           >
             {item.found ? (
               <>
-                <div className={cn("w-2 h-2 rounded-full flex-shrink-0", sigDot[item.significance])} />
-                <Package className="w-4 h-4 text-amber-400/60 flex-shrink-0 hidden sm:block" />
+                <EvidenceThumbnail src={item.displayImage} alt={item.title} className="w-14 h-14 sm:w-16 sm:h-16" />
+                <div className={cn("w-2 h-2 rounded-full flex-shrink-0 sm:hidden", sigDot[item.significance])} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{item.title}</p>
                   <p className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">
@@ -69,7 +73,9 @@ export function EvidencePanel({
               </>
             ) : (
               <>
-                <Lock className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                <div className="w-14 h-14 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-5 h-5 text-slate-600" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-600">Sealed — Not yet recovered</p>
                   {item.unlockCondition && (
@@ -82,13 +88,10 @@ export function EvidencePanel({
         ))}
       </div>
 
-      {isClosed && (
-        <p className="text-xs text-center text-slate-600 font-mono">Case closed — evidence review only</p>
-      )}
-
       <EvidenceDetailSheet
         item={selected}
         caseData={caseData}
+        imageSrc={selected ? selected.displayImage : undefined}
         open={!!selectedId && !!selected?.found}
         onClose={() => setSelectedId(null)}
       />

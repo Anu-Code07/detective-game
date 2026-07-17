@@ -63,7 +63,6 @@ export default function InvestigatePage() {
   const caseData = getCaseById(caseId);
   const { activeTab, setActiveTab, startCase, getInvestigation } = useGameStore();
   const investigation = getInvestigation(caseId);
-  const isClosed = investigation?.completed === true;
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -82,15 +81,15 @@ export default function InvestigatePage() {
     switch (activeTab) {
       case "overview": return <OverviewPanel caseData={caseData} investigation={investigation} />;
       case "evidence": return <EvidencePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
-      case "documents": return <DocumentsPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
+      case "documents": return <DocumentsPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
       case "suspects": return <SuspectsPanel caseData={caseData} />;
       case "witnesses": return <WitnessesPanel caseData={caseData} />;
-      case "interrogate": return <InterrogatePanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
-      case "timeline": return <TimelinePanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
-      case "board": return <CaseBoardPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
-      case "map": return <MapPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
-      case "notebook": return <NotebookPanel investigation={investigation} caseId={caseId} locked={isClosed} />;
-      case "chargesheet": return <ChargesheetPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={isClosed} />;
+      case "interrogate": return <InterrogatePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "timeline": return <TimelinePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "board": return <CaseBoardPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "map": return <MapPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "notebook": return <NotebookPanel investigation={investigation} caseId={caseId} />;
+      case "chargesheet": return <ChargesheetPanel caseData={caseData} investigation={investigation} caseId={caseId} locked={!!investigation?.completed} />;
       case "verdict": return <VerdictPanel caseData={caseData} investigation={investigation} />;
       default: return null;
     }

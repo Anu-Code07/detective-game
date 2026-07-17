@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { FileText, Lock } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
@@ -76,11 +75,17 @@ export function DocumentsPanel({
 
         {active?.available && (
           <div className="lg:col-span-2 space-y-4">
-            {active.image && (
-              <div className="relative h-48 rounded-xl overflow-hidden border border-white/10">
-                <Image src={active.image} alt="" fill className="object-cover" />
-              </div>
-            )}
+            <div className="relative h-48 rounded-xl overflow-hidden border border-white/10 bg-black/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={active.image ?? caseData.meta.coverImage}
+                alt={active.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = caseData.meta.coverImage;
+                }}
+              />
+            </div>
             <div className="doc-paper max-h-[55vh] overflow-y-auto whitespace-pre-wrap">
               <div className="border-b border-slate-300 pb-3 mb-4 text-xs text-slate-600">
                 <strong>{active.title}</strong><br />

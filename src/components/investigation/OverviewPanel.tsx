@@ -1,5 +1,4 @@
 import type { InvestigationCase, InvestigationState } from "@/types/case";
-import Image from "next/image";
 import { AlertTriangle, Clock, MapPin, Shield } from "lucide-react";
 import { formatCaseDate } from "@/lib/utils";
 
@@ -16,8 +15,9 @@ export function OverviewPanel({
 
   return (
     <div className="space-y-6">
-      <div className="relative rounded-2xl overflow-hidden h-56 md:h-72">
-        <Image src={meta.coverImage} alt={meta.title} fill className="object-cover" />
+      <div className="relative rounded-2xl overflow-hidden h-56 md:h-72 bg-black/40">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={meta.coverImage} alt={meta.title} className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#060a12] via-[#060a12]/50 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <p className="text-amber-400 font-mono text-sm mb-1">{meta.crimeType}</p>

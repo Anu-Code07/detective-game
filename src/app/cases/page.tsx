@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, MapPin, RotateCcw } from "lucide-react";
 import { getCaseListSummary } from "@/lib/cases";
 import { useGameStore } from "@/store/game-store";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,15 @@ const difficultyColors: Record<string, string> = {
 };
 
 export default function CasesPage() {
-  const { completedCases, caseScores, startCase } = useGameStore();
+  const { completedCases, caseScores, startCase, resetCase } = useGameStore();
+
+  function handlePlay(caseId: string, isCompleted: boolean) {
+    if (isCompleted) {
+      resetCase(caseId);
+    } else {
+      startCase(caseId);
+    }
+  }
 
   return (
     <main className="min-h-screen relative">
@@ -76,14 +84,27 @@ export default function CasesPage() {
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />~{c.estimatedMinutes} min</span>
                       </div>
                     </div>
-                    <div className="mt-4">
+                    <div className="mt-4 flex flex-wrap gap-2">
                       <Link
                         href={`/investigate/${c.id}`}
-                        onClick={() => startCase(c.id)}
-                        className="inline-flex px-5 py-2.5 rounded-lg bg-amber-500/90 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+                        onClick={() => handlePlay(c.id, done)}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-500/90 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
                       >
-                        {done ? "Review Case" : "Begin Investigation"}
+                        {done ? (
+                          <><RotateCcw className="w-3.5 h-3.5" /> Replay Case</>
+                        ) : (
+                          "Begin Investigation"
+                        )}
                       </Link>
+                      {done && (
+                        <Link
+                          href={`/investigate/${c.id}`}
+                          onClick={() => startCase(c.id)}
+                          className="inline-flex px-5 py-2.5 rounded-lg glass-panel text-sm text-slate-300 hover:bg-white/10"
+                        >
+                          Review ({score}%)
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
