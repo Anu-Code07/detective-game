@@ -6,11 +6,57 @@ import {
   isAggressiveQuestion,
 } from "@/lib/case-engine/engine";
 import { getCaseById } from "@/lib/cases";
+import type { InvestigationState } from "@/types/case";
+
+interface InvestigationSnapshot {
+  discoveredEvidence?: string[];
+  unlockedDocuments?: string[];
+  unlockedLocations?: string[];
+  discoveredTimeline?: string[];
+  contradictionsFound?: string[];
+  questionsAsked?: number;
+}
+
+function buildInvestigationState(
+  caseId: string,
+  caseData: ReturnType<typeof getCaseById>,
+  snapshot?: InvestigationSnapshot
+): InvestigationState {
+  const defaultEvidence = caseData?.evidence.filter((e) => e.discoveredByDefault).map((e) => e.id) ?? [];
+  const defaultTimeline = caseData?.timeline.filter((t) => t.known).map((t) => t.id) ?? [];
+
+  return {
+    caseId,
+    startedAt: new Date().toISOString(),
+    discoveredEvidence: snapshot?.discoveredEvidence ?? defaultEvidence,
+    unlockedDocuments: snapshot?.unlockedDocuments ?? [],
+    unlockedLocations: snapshot?.unlockedLocations ?? [],
+    discoveredTimeline: snapshot?.discoveredTimeline ?? defaultTimeline,
+    notebook: [],
+    boardConnections: [],
+    interrogations: {},
+    questionsAsked: snapshot?.questionsAsked ?? 0,
+    wrongAccusations: 0,
+    contradictionsFound: snapshot?.contradictionsFound ?? [],
+    warrantsRequested: [],
+    searchesCompleted: [],
+    theoryNotes: "",
+    chargesheetSubmitted: false,
+    completed: false,
+  };
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { caseId, suspectId, question, history = [], presentedEvidenceId } = body;
+    const {
+      caseId,
+      suspectId,
+      question,
+      history = [],
+      presentedEvidenceId,
+      investigationSnapshot,
+    } = body;
 
     if (!caseId || !suspectId || !question?.trim()) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -30,6 +76,8 @@ export async function POST(req: NextRequest) {
       ? caseData.evidence.find((e) => e.id === presentedEvidenceId)
       : undefined;
 
+    const investigationState = buildInvestigationState(caseId, caseData, investigationSnapshot);
+
     const pressure = calculatePolicePressure(
       history.length,
       !!presentedEvidence,
@@ -46,30 +94,12 @@ export async function POST(req: NextRequest) {
         victimName: caseData.victim.name,
         crimeDate: caseData.meta.date,
         crimeLocation: caseData.meta.location,
-        knownFacts: getKnownFacts(caseData, {
-          caseId,
-          startedAt: new Date().toISOString(),
-          discoveredEvidence: caseData.evidence.filter((e) => e.discoveredByDefault).map((e) => e.id),
-          unlockedDocuments: [],
-          unlockedLocations: [],
-          discoveredTimeline: caseData.timeline.filter((t) => t.known).map((t) => t.id),
-          notebook: [],
-          boardConnections: [],
-          interrogations: {},
-          questionsAsked: 0,
-          wrongAccusations: 0,
-          contradictionsFound: [],
-          warrantsRequested: [],
-          searchesCompleted: [],
-          theoryNotes: "",
-          chargesheetSubmitted: false,
-          completed: false,
-        }),
+        knownFacts: getKnownFacts(caseData, investigationState),
         policePressure: pressure,
       },
     });
 
-    return NextResponse.json({ reply, emotionalState });
+    return NextResponse.json({ reply, emotionalState, pressure });
   } catch (err) {
     console.error("Interrogation error:", err);
     return NextResponse.json(

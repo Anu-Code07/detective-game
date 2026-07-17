@@ -1,8 +1,78 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle, Gavel, Zap } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
+import { PoliceReport } from "@/components/reports/PoliceReport";
+import type { PoliceReportData, ReportSection } from "@/lib/reports/parse-content";
+
+function buildSubmittedReport(
+  caseData: InvestigationCase,
+  accusation: NonNullable<InvestigationState["finalAccusation"]>
+): PoliceReportData {
+  const accused = caseData.suspects.find((s) => s.id === accusation.accusedId);
+  const evidenceList = accusation.evidence
+    .map((id) => caseData.evidence.find((e) => e.id === id)?.title)
+    .filter(Boolean) as string[];
+
+  const sections: ReportSection[] = [
+    {
+      heading: "Accused",
+      rows: [
+        { label: "Name", value: accused?.name ?? "Unknown" },
+        { label: "Occupation", value: accused?.occupation ?? "N/A" },
+      ],
+    },
+    {
+      heading: "Charges",
+      bullets: accusation.charges,
+    },
+  ];
+
+  if (accusation.motive?.trim()) {
+    sections.push({ heading: "Motive", body: accusation.motive });
+  }
+  if (accusation.opportunity?.trim()) {
+    sections.push({ heading: "Opportunity", body: accusation.opportunity });
+  }
+  if (accusation.method?.trim()) {
+    sections.push({ heading: "Method", body: accusation.method });
+  }
+  if (evidenceList.length) {
+    sections.push({ heading: "Supporting Exhibits", bullets: evidenceList });
+  } else {
+    sections.push({
+      heading: "Supporting Exhibits",
+      body: "None filed — quick accusation without evidence documentation.",
+      highlight: true,
+    });
+  }
+  if (accusation.summary?.trim()) {
+    sections.push({ heading: "Additional Notes", body: accusation.summary });
+  }
+
+  sections.push({
+    heading: "Victim",
+    rows: [
+      { label: "Name", value: `${caseData.victim.name}, ${caseData.victim.age}` },
+      { label: "Cause of Death", value: caseData.victim.causeOfDeath },
+    ],
+  });
+
+  return {
+    department: "METROPOLITAN POLICE — PROSECUTOR'S OFFICE",
+    title: "POLICE CHARGESHEET",
+    subtitle: caseData.meta.title,
+    referenceNumber: `CF-${String(caseData.meta.order).padStart(2, "0")}-CHARGE`,
+    date: new Date(accusation.submittedAt).toLocaleDateString(),
+    author: "Lead Detective — Filing Officer",
+    classification: accusation.isQuickGuess ? "RESTRICTED" : "OFFICIAL",
+    sections,
+    footer: "Submitted for judicial review. False filing is a criminal offense.",
+    stamp: accusation.isQuickGuess ? "HUNCH" : "FILED",
+  };
+}
 
 export function ChargesheetPanel({
   caseData,
@@ -18,6 +88,9 @@ export function ChargesheetPanel({
   const { submitAccusation } = useGameStore();
   const discovered = new Set(investigation?.discoveredEvidence ?? []);
   const [accusedId, setAccusedId] = useState("");
+  const [motive, setMotive] = useState("");
+  const [opportunity, setOpportunity] = useState("");
+  const [method, setMethod] = useState("");
   const [selectedEvidence, setSelectedEvidence] = useState<string[]>([]);
   const [summary, setSummary] = useState("");
 
@@ -30,63 +103,35 @@ export function ChargesheetPanel({
     );
   }
 
-  function submit() {
-    if (!accusedId || selectedEvidence.length < 2 || !summary.trim()) return;
+  function submitFull() {
+    if (!accusedId) return;
     submitAccusation(caseId, {
       accusedId,
       charges: caseData.solution.charges,
       evidence: selectedEvidence,
+      motive: motive.trim(),
+      opportunity: opportunity.trim(),
+      method: method.trim(),
       summary: summary.trim(),
+      isQuickGuess: false,
+    });
+  }
+
+  function submitGuess() {
+    if (!accusedId) return;
+    submitAccusation(caseId, {
+      accusedId,
+      charges: caseData.solution.charges,
+      evidence: [],
+      isQuickGuess: true,
     });
   }
 
   if (locked && accusation) {
-    const accused = caseData.suspects.find((s) => s.id === accusation.accusedId);
-    const evidenceList = accusation.evidence
-      .map((id) => caseData.evidence.find((e) => e.id === id)?.title)
-      .filter(Boolean);
-
-    const report = `POLICE CHARGESHEET — FINAL SUBMISSION
-═══════════════════════════════════════
-
-CASE: ${caseData.meta.title}
-REF: CF-${String(caseData.meta.order).padStart(2, "0")}-CHARGE
-SUBMITTED: ${new Date(accusation.submittedAt).toLocaleString()}
-
-───────────────────────────────────────
-ACCUSED
-───────────────────────────────────────
-Name: ${accused?.name ?? "Unknown"}
-Occupation: ${accused?.occupation ?? "N/A"}
-
-───────────────────────────────────────
-CHARGES
-───────────────────────────────────────
-${accusation.charges.map((c, i) => `${i + 1}. ${c}`).join("\n")}
-
-───────────────────────────────────────
-SUPPORTING EXHIBITS
-───────────────────────────────────────
-${evidenceList.map((e, i) => `${i + 1}. ${e}`).join("\n")}
-
-───────────────────────────────────────
-INVESTIGATION SUMMARY
-───────────────────────────────────────
-${accusation.summary}
-
-───────────────────────────────────────
-VICTIM
-───────────────────────────────────────
-${caseData.victim.name}, ${caseData.victim.age} — ${caseData.victim.occupation}
-Cause of Death: ${caseData.victim.causeOfDeath}
-
-═══════════════════════════════════════
-SUBMITTED TO COURT — ${investigation?.verdict?.success ? "CASE CLOSED" : "PENDING REVIEW"}`;
-
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold">Submitted Chargesheet</h2>
-        <div className="doc-paper whitespace-pre-wrap text-xs leading-relaxed">{report}</div>
+        <PoliceReport data={buildSubmittedReport(caseData, accusation)} />
       </div>
     );
   }
@@ -101,65 +146,121 @@ SUBMITTED TO COURT — ${investigation?.verdict?.success ? "CASE CLOSED" : "PEND
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h2 className="text-xl font-bold">Prepare Chargesheet</h2>
-      <p className="text-sm text-slate-400">
-        Select the accused, supporting evidence, and write your investigation summary.
-      </p>
-
+    <div className="space-y-5 max-w-2xl">
       <div>
-        <label className="text-sm font-mono text-slate-500 uppercase block mb-2">Accused</label>
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Gavel className="w-5 h-5 text-amber-400" /> Prepare Chargesheet
+        </h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Build your case properly — or take a shot with a quick accusation (the court will notice).
+        </p>
+      </div>
+
+      {/* Section 1: Accused */}
+      <fieldset className="glass-panel p-4 space-y-3">
+        <legend className="text-xs font-mono text-amber-400 uppercase px-1">I. Accused Party *</legend>
         <select
           value={accusedId}
           onChange={(e) => setAccusedId(e.target.value)}
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm"
+          className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm"
         >
-          <option value="">Select suspect...</option>
+          <option value="">Select suspect to charge...</option>
           {caseData.suspects.map((s) => (
             <option key={s.id} value={s.id}>{s.name} — {s.occupation}</option>
           ))}
         </select>
-      </div>
+      </fieldset>
 
-      <div>
-        <label className="text-sm font-mono text-slate-500 uppercase block mb-2">
-          Supporting Evidence ({selectedEvidence.length} selected)
-        </label>
-        <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
-          {evidenceOptions.map((e) => (
-            <label key={e.id} className="flex items-center gap-3 glass-panel p-3 cursor-pointer hover:bg-white/5">
-              <input
-                type="checkbox"
-                checked={selectedEvidence.includes(e.id)}
-                onChange={() => toggleEvidence(e.id)}
-                className="rounded border-white/20"
-              />
-              <div>
-                <p className="text-sm font-medium">{e.title}</p>
-                <p className="text-xs text-slate-500">{e.significance}</p>
-              </div>
-            </label>
-          ))}
+      {/* Section 2: Theory */}
+      <fieldset className="glass-panel p-4 space-y-3">
+        <legend className="text-xs font-mono text-amber-400 uppercase px-1">II. Theory of Crime</legend>
+        <div>
+          <label className="text-[10px] font-mono text-slate-500 uppercase">Motive — Why would they kill?</label>
+          <textarea
+            value={motive}
+            onChange={(e) => setMotive(e.target.value)}
+            placeholder="Financial gain, silencing a witness, revenge..."
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+          />
         </div>
-      </div>
+        <div>
+          <label className="text-[10px] font-mono text-slate-500 uppercase">Opportunity — How did they access the victim?</label>
+          <textarea
+            value={opportunity}
+            onChange={(e) => setOpportunity(e.target.value)}
+            placeholder="Alibi gaps, access to location, timeline window..."
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-mono text-slate-500 uppercase">Method — How was the crime committed?</label>
+          <textarea
+            value={method}
+            onChange={(e) => setMethod(e.target.value)}
+            placeholder="Weapon used, poison, arson, cause of death..."
+            className="w-full mt-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:border-amber-500/40 focus:outline-none"
+          />
+        </div>
+      </fieldset>
 
-      <div>
-        <label className="text-sm font-mono text-slate-500 uppercase block mb-2">Investigation Summary</label>
+      {/* Section 3: Evidence */}
+      <fieldset className="glass-panel p-4 space-y-2">
+        <legend className="text-xs font-mono text-amber-400 uppercase px-1">
+          III. Supporting Exhibits ({selectedEvidence.length} selected)
+        </legend>
+        <div className="space-y-1.5 max-h-40 overflow-y-auto scrollbar-thin">
+          {evidenceOptions.length === 0 ? (
+            <p className="text-xs text-slate-500">No evidence collected yet.</p>
+          ) : (
+            evidenceOptions.map((e) => (
+              <label key={e.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedEvidence.includes(e.id)}
+                  onChange={() => toggleEvidence(e.id)}
+                  className="rounded border-white/20"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm truncate">{e.title}</p>
+                  <p className="text-[10px] text-slate-500 font-mono">{e.significance}</p>
+                </div>
+              </label>
+            ))
+          )}
+        </div>
+      </fieldset>
+
+      {/* Section 4: Notes */}
+      <fieldset className="glass-panel p-4">
+        <legend className="text-xs font-mono text-slate-500 uppercase px-1">IV. Additional Notes (optional)</legend>
         <textarea
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
-          placeholder="State your theory: motive, opportunity, method, and how evidence connects..."
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm min-h-[120px] focus:outline-none focus:border-amber-500/50"
+          placeholder="Connect the dots for the prosecutor..."
+          className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[60px] resize-none focus:outline-none"
         />
-      </div>
+      </fieldset>
 
-      <button
-        onClick={submit}
-        disabled={!accusedId || selectedEvidence.length < 2 || summary.length < 20}
-        className="w-full py-3 rounded-xl bg-amber-500 text-black font-bold disabled:opacity-40 hover:bg-amber-400 transition-colors"
-      >
-        Submit to Court
-      </button>
+      {/* Actions */}
+      <div className="space-y-2">
+        <button
+          onClick={submitFull}
+          disabled={!accusedId}
+          className="w-full py-3 rounded-xl bg-amber-500 text-black font-bold disabled:opacity-40 hover:bg-amber-400 transition-colors flex items-center justify-center gap-2"
+        >
+          <Gavel className="w-4 h-4" /> File Full Chargesheet
+        </button>
+        <button
+          onClick={submitGuess}
+          disabled={!accusedId}
+          className="w-full py-2.5 rounded-xl border border-white/10 text-slate-300 text-sm hover:bg-white/5 disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          <Zap className="w-4 h-4 text-amber-400" /> Quick Accusation (guess only)
+        </button>
+        <p className="text-[10px] text-slate-600 text-center flex items-center justify-center gap-1">
+          <AlertTriangle className="w-3 h-3" /> Quick accusations without evidence rarely hold up in court
+        </p>
+      </div>
     </div>
   );
 }

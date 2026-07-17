@@ -236,21 +236,29 @@ export interface InvestigationState {
     accusedId: string;
     charges: string[];
     evidence: string[];
-    summary: string;
+    motive?: string;
+    opportunity?: string;
+    method?: string;
+    summary?: string;
     submittedAt: string;
+    isQuickGuess?: boolean;
   };
   verdict?: VerdictResult;
 }
 
-export interface PlayerProgress {
-  completedCases: string[];
-  caseScores: Record<string, number>;
-  investigations: Record<string, InvestigationState>;
-}
+export type VerdictTier =
+  | "master_detective"
+  | "solid_case"
+  | "lucky_guess"
+  | "failed_prosecution"
+  | "wrong_accusation";
 
 export interface VerdictResult {
   success: boolean;
   score: number;
+  tier: VerdictTier;
+  tierLabel: string;
+  tierMessage: string;
   grades: {
     logic: number;
     evidenceQuality: number;
@@ -261,4 +269,10 @@ export interface VerdictResult {
   feedback: string[];
   rejectedEvidence: string[];
   defenseChallenges: string[];
+}
+
+export interface PlayerProgress {
+  completedCases: string[];
+  caseScores: Record<string, number>;
+  investigations: Record<string, InvestigationState>;
 }

@@ -5,6 +5,8 @@ import { FileText, Lock } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
 import { cn } from "@/lib/utils";
+import { documentToReport } from "@/lib/reports/parse-content";
+import { PoliceReport } from "@/components/reports/PoliceReport";
 
 export function DocumentsPanel({
   caseData,
@@ -74,26 +76,18 @@ export function DocumentsPanel({
         </div>
 
         {active?.available && (
-          <div className="lg:col-span-2 space-y-4">
-            <div className="relative h-48 rounded-xl overflow-hidden border border-white/10 bg-black/30">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={active.image ?? caseData.meta.coverImage}
-                alt={active.title}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = caseData.meta.coverImage;
-                }}
-              />
-            </div>
-            <div className="doc-paper max-h-[55vh] overflow-y-auto whitespace-pre-wrap">
-              <div className="border-b border-slate-300 pb-3 mb-4 text-xs text-slate-600">
-                <strong>{active.title}</strong><br />
-                Ref: {active.referenceNumber} · {active.date}<br />
-                Author: {active.author}
-              </div>
-              {active.content}
-            </div>
+          <div className="lg:col-span-2 max-h-[70vh] overflow-y-auto scrollbar-thin">
+            <PoliceReport
+              data={documentToReport({
+                title: active.title,
+                referenceNumber: active.referenceNumber,
+                date: active.date,
+                author: active.author,
+                content: active.content,
+                type: active.type,
+                classified: active.classified,
+              })}
+            />
           </div>
         )}
       </div>

@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { Lock, ChevronRight } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
-import { getEvidenceImage } from "@/lib/evidence-images";
 import { cn } from "@/lib/utils";
-import { EvidenceDetailSheet } from "./EvidenceDetailSheet";
+import { getEvidenceImage } from "@/lib/evidence-images";
 import { EvidenceThumbnail } from "./EvidenceThumbnail";
+import { EvidenceDetailSheet } from "./EvidenceDetailSheet";
 
 const sigDot = {
   critical: "bg-red-400",
@@ -29,7 +29,6 @@ export function EvidencePanel({
   const items = caseData.evidence.map((e) => ({
     ...e,
     found: discovered.has(e.id) || e.discoveredByDefault,
-    displayImage: getEvidenceImage(e, caseData.meta),
   }));
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
@@ -39,7 +38,7 @@ export function EvidencePanel({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold">Evidence Locker</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Tap an exhibit to open the full property report</p>
+          <p className="text-xs text-slate-500 mt-0.5">Tap an exhibit to view photos and the property report</p>
         </div>
         <span className="text-sm font-mono text-slate-500">
           {items.filter((i) => i.found).length}/{items.length}
@@ -61,10 +60,16 @@ export function EvidencePanel({
           >
             {item.found ? (
               <>
-                <EvidenceThumbnail src={item.displayImage} alt={item.title} className="w-14 h-14 sm:w-16 sm:h-16" />
-                <div className={cn("w-2 h-2 rounded-full flex-shrink-0 sm:hidden", sigDot[item.significance])} />
+                <EvidenceThumbnail
+                  src={getEvidenceImage(item, caseData.meta)}
+                  alt={item.title}
+                  className="w-14 h-14 sm:w-16 sm:h-16"
+                />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{item.title}</p>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("w-2 h-2 rounded-full flex-shrink-0", sigDot[item.significance])} />
+                    <p className="font-medium text-sm truncate">{item.title}</p>
+                  </div>
                   <p className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">
                     {item.type} · {item.significance.replace("_", " ")}
                   </p>
@@ -91,7 +96,6 @@ export function EvidencePanel({
       <EvidenceDetailSheet
         item={selected}
         caseData={caseData}
-        imageSrc={selected ? selected.displayImage : undefined}
         open={!!selectedId && !!selected?.found}
         onClose={() => setSelectedId(null)}
       />

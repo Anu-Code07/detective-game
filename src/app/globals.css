@@ -72,6 +72,173 @@
   background-size: 100% 24px;
 }
 
+/* ── Police Report (code-generated documents) ── */
+.police-report {
+  @apply bg-[#f8f6f0] text-[#1a1a1a] rounded-sm shadow-lg border border-[#c8c4b8];
+  font-family: "Courier New", Courier, ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  padding: 1.25rem;
+  position: relative;
+}
+@media (min-width: 640px) {
+  .police-report { font-size: 12px; padding: 1.75rem 2rem; }
+}
+
+.report-letterhead { margin-bottom: 0.75rem; }
+.report-dept {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.report-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #111;
+}
+@media (min-width: 640px) { .report-title { font-size: 16px; } }
+.report-subtitle {
+  font-size: 11px;
+  color: #444;
+  margin-top: 0.15rem;
+}
+
+.report-stamp {
+  border: 2px solid;
+  padding: 0.2rem 0.5rem;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  transform: rotate(-4deg);
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.report-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.report-meta-grid span,
+.report-meta-extra span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: #777;
+  text-transform: uppercase;
+}
+.report-meta-grid strong,
+.report-meta-extra strong {
+  font-size: 11px;
+  color: #111;
+}
+
+.report-meta-extra {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 1rem;
+  margin-top: 0.5rem;
+}
+
+.report-rule {
+  border: none;
+  border-top: 2px solid #111;
+  margin: 0.75rem 0;
+}
+
+.report-body-area { display: flex; flex-direction: column; gap: 0.85rem; }
+
+.report-section { }
+.report-section-highlight {
+  background: #fff8e1;
+  border-left: 3px solid #d97706;
+  padding: 0.5rem 0.75rem;
+}
+.report-section-heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #333;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.4rem;
+}
+
+.report-body { color: #222; margin: 0; }
+.report-list {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  color: #222;
+}
+.report-list li { margin-bottom: 0.2rem; }
+
+.report-table { border-collapse: collapse; margin: 0.25rem 0; }
+.report-table-label {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #666;
+  padding: 0.2rem 0.5rem 0.2rem 0;
+  vertical-align: top;
+  width: 35%;
+}
+.report-table-value {
+  color: #111;
+  padding: 0.2rem 0;
+  vertical-align: top;
+}
+.report-table-th {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  border-bottom: 1px solid #999;
+  padding: 0.25rem 0.5rem;
+  color: #444;
+}
+.report-table-td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.25rem 0.5rem;
+  color: #111;
+}
+
+.report-footer {
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #bbb;
+}
+.report-footer-text {
+  font-size: 9px;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+.report-signature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+.report-signature-block p {
+  font-size: 9px;
+  color: #555;
+  margin-top: 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.report-signature-line {
+  border-bottom: 1px solid #333;
+  height: 1.5rem;
+}
+
 .btn-primary {
   @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-amber-500 text-black font-semibold transition-all duration-300 hover:bg-amber-400 hover:shadow-lg hover:shadow-amber-500/25 active:scale-95;
 }

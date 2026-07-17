@@ -39,7 +39,16 @@ interface GameStore extends PlayerProgress {
   setTheoryNotes: (caseId: string, notes: string) => void;
   submitAccusation: (
     caseId: string,
-    data: { accusedId: string; charges: string[]; evidence: string[]; summary: string }
+    data: {
+      accusedId: string;
+      charges: string[];
+      evidence: string[];
+      motive?: string;
+      opportunity?: string;
+      method?: string;
+      summary?: string;
+      isQuickGuess?: boolean;
+    }
   ) => void;
   searchLocation: (caseId: string, locationId: string) => void;
   requestWarrant: (caseId: string, target: string) => void;

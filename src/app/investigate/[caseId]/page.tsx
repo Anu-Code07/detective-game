@@ -84,7 +84,7 @@ export default function InvestigatePage() {
       case "documents": return <DocumentsPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
       case "suspects": return <SuspectsPanel caseData={caseData} />;
       case "witnesses": return <WitnessesPanel caseData={caseData} />;
-      case "interrogate": return <InterrogatePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
+      case "interrogate": return <InterrogatePanel caseData={caseData} investigation={investigation} caseId={caseId} locked={!!investigation?.completed} />;
       case "timeline": return <TimelinePanel caseData={caseData} investigation={investigation} caseId={caseId} />;
       case "board": return <CaseBoardPanel caseData={caseData} investigation={investigation} caseId={caseId} />;
       case "map": return <MapPanel caseData={caseData} investigation={investigation} caseId={caseId} />;

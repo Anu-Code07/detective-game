@@ -45,8 +45,11 @@ export function buildEvidenceDetail(
     .filter(Boolean) as string[];
 
   const findings = buildFindings(item, caseData, linkedDoc?.content);
-  const labResults = buildLabResults(item, caseData);
-  const detectiveNotes = buildDetectiveNotes(item, caseData);
+  if (linkedEvidence.length) {
+    findings.push(`Related exhibits on file: ${linkedEvidence.join("; ")}`);
+  }
+  const labResults = buildLabResults(item);
+  const detectiveNotes = buildDetectiveNotes(item);
 
   return {
     referenceNumber: refNum,
@@ -182,7 +185,7 @@ function buildFindings(
   return findings;
 }
 
-function buildLabResults(item: EvidenceItem, caseData: InvestigationCase): string[] | undefined {
+function buildLabResults(item: EvidenceItem): string[] | undefined {
   if (item.type !== "forensic" && item.type !== "physical") return undefined;
 
   const results: string[] = [];
@@ -200,7 +203,7 @@ function buildLabResults(item: EvidenceItem, caseData: InvestigationCase): strin
   return results.length > 0 ? results : undefined;
 }
 
-function buildDetectiveNotes(item: EvidenceItem, caseData: InvestigationCase): string | undefined {
+function buildDetectiveNotes(item: EvidenceItem): string | undefined {
   if (item.significance !== "critical" && item.significance !== "important") return undefined;
 
   const hints: Record<string, string> = {
