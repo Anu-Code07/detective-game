@@ -18,14 +18,27 @@ function buildSubmittedReport(
 
   const sections: ReportSection[] = [
     {
-      heading: "Accused",
+      heading: "Case Reference",
       rows: [
-        { label: "Name", value: accused?.name ?? "Unknown" },
-        { label: "Occupation", value: accused?.occupation ?? "N/A" },
+        { label: "Case Title", value: caseData.meta.title },
+        { label: "Crime Type", value: caseData.meta.crimeType },
+        { label: "Incident", value: `${caseData.meta.date} — ${caseData.meta.time}` },
+        { label: "Scene", value: caseData.meta.location },
+        { label: "Filing Type", value: accusation.isQuickGuess ? "Quick Accusation (incomplete)" : "Full Chargesheet" },
       ],
     },
     {
-      heading: "Charges",
+      heading: "Accused Party",
+      rows: [
+        { label: "Name", value: accused?.name ?? "Unknown" },
+        { label: "Age", value: accused ? String(accused.age) : "N/A" },
+        { label: "Occupation", value: accused?.occupation ?? "N/A" },
+        { label: "Stated Alibi", value: accused?.alibi ?? "Not provided" },
+        { label: "Known Motive (intel)", value: accused?.motive ?? "Under investigation" },
+      ],
+    },
+    {
+      heading: "Charges Filed",
       bullets: accusation.charges,
     },
   ];
@@ -55,9 +68,21 @@ function buildSubmittedReport(
   sections.push({
     heading: "Victim",
     rows: [
-      { label: "Name", value: `${caseData.victim.name}, ${caseData.victim.age}` },
+      { label: "Name", value: `${caseData.victim.name}, age ${caseData.victim.age}` },
+      { label: "Occupation", value: caseData.victim.occupation },
       { label: "Cause of Death", value: caseData.victim.causeOfDeath },
+      { label: "Last Seen", value: caseData.victim.lastSeen },
+      { label: "Background", value: caseData.victim.background },
     ],
+  });
+
+  sections.push({
+    heading: "Prosecution Certification",
+    body:
+      "I certify that the above filing is submitted in good faith based on evidence collected during this investigation. " +
+      (accusation.isQuickGuess
+        ? "NOTE: This is a preliminary accusation without full theory documentation."
+        : "Theory of crime, supporting exhibits, and victim particulars have been documented as required."),
   });
 
   return {
