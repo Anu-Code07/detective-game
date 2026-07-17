@@ -2,10 +2,11 @@
 
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { scoreColor, cn } from "@/lib/utils";
-import { Gavel, Scale, Share2 } from "lucide-react";
+import { Gavel, Scale } from "lucide-react";
 import { PoliceReport } from "@/components/reports/PoliceReport";
 import type { PoliceReportData } from "@/lib/reports/parse-content";
 import { PanelHeader } from "@/components/ui/PanelHeader";
+import { ShareImageButton } from "@/components/investigation/ShareImageButton";
 import { useGameStore } from "@/store/game-store";
 
 const TIER_STAMP: Record<string, string> = {
@@ -147,18 +148,21 @@ export function VerdictPanel({
 
       <PoliceReport data={reportData} />
 
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-          <Gavel className="w-3 h-3" />
-          {verdict.success ? "CASE CLOSED" : "CASE OPEN — REBUILD YOUR FILING"}
+      {investigation && (
+        <div className="glass-panel p-5">
+          <p className="text-sm font-semibold text-white mb-1 text-center">Share Your Result</p>
+          <p className="text-xs text-slate-500 text-center mb-4">{shareText}</p>
+          <ShareImageButton
+            caseData={caseData}
+            investigation={investigation}
+            verdict={verdict}
+          />
         </div>
-        <button
-          onClick={() => navigator.clipboard?.writeText(shareText)}
-          className="inline-flex items-center gap-2 text-xs px-4 py-2 rounded-lg btn-ghost"
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          Copy result
-        </button>
+      )}
+
+      <div className="flex items-center justify-center gap-2 text-xs text-slate-500 font-mono pb-4">
+        <Gavel className="w-3 h-3" />
+        {verdict.success ? "CASE CLOSED" : "CASE OPEN — REBUILD YOUR FILING"}
       </div>
     </div>
   );
