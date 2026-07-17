@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { FileSearch, Loader2, Send, Shield, User } from "lucide-react";
 import type { InvestigationCase, InvestigationState } from "@/types/case";
 import { useGameStore } from "@/store/game-store";
@@ -70,9 +71,10 @@ export function InterrogatePanel({
   const [question, setQuestion] = useState("");
   const [evidenceId, setEvidenceId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [unlockToast, setUnlockToast] = useState<string | null>(null);
   const [showEvidencePicker, setShowEvidencePicker] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const { addInterrogationMessage, incrementQuestions } = useGameStore();
+  const { addInterrogationMessage, incrementQuestions, tryInterrogationUnlock } = useGameStore();
 
   const suspect = caseData.suspects.find((s) => s.id === suspectId);
   const history = investigation?.interrogations[suspectId] ?? [];
@@ -112,6 +114,12 @@ export function InterrogatePanel({
     });
     incrementQuestions(caseId);
 
+    const unlockedTitle = tryInterrogationUnlock(caseId, suspectId, q);
+    if (unlockedTitle) {
+      setUnlockToast(`Evidence recovered: ${unlockedTitle}`);
+      setTimeout(() => setUnlockToast(null), 4000);
+    }
+
     try {
       const res = await fetch("/api/interrogate", {
         method: "POST",
@@ -130,6 +138,7 @@ export function InterrogatePanel({
                 discoveredTimeline: investigation.discoveredTimeline,
                 contradictionsFound: investigation.contradictionsFound,
                 questionsAsked: investigation.questionsAsked,
+                solvedLeads: investigation.solvedLeads ?? [],
               }
             : undefined,
         }),
@@ -183,6 +192,16 @@ export function InterrogatePanel({
       </div>
 
       {/* Suspect tabs */}
+      {unlockToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-300 font-medium text-center"
+        >
+          {unlockToast}
+        </motion.div>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {caseData.suspects.map((s) => (
           <button

@@ -229,6 +229,7 @@ export interface InvestigationState {
   contradictionsFound: string[];
   warrantsRequested: string[];
   searchesCompleted: string[];
+  solvedLeads: string[];
   theoryNotes: string;
   chargesheetSubmitted: boolean;
   completed: boolean;

@@ -9,7 +9,13 @@ import type {
   NotebookEntry,
   PlayerProgress,
 } from "@/types/case";
-import { createInitialState, discoverEvidence, evaluateVerdict } from "@/lib/case-engine/engine";
+import { createInitialState, discoverEvidence, evaluateVerdict, unlockDocument } from "@/lib/case-engine/engine";
+import {
+  getLeadsForCase,
+  matchInterrogationUnlock,
+  validateLeadAnswer,
+  type EvidenceUnlockLead,
+} from "@/lib/case-engine/evidence-unlocks";
 import { getCaseById } from "@/lib/cases";
 import { generateId } from "@/lib/utils";
 
@@ -22,6 +28,8 @@ interface GameStore extends PlayerProgress {
   getInvestigation: (caseId: string) => InvestigationState | null;
   startCase: (caseId: string) => void;
   discoverItem: (caseId: string, evidenceId: string) => void;
+  solveLeadAnswer: (caseId: string, leadId: string, optionIndex: number) => { correct: boolean; evidenceTitle?: string };
+  tryInterrogationUnlock: (caseId: string, suspectId: string, question: string) => string | null;
   unlockDocument: (caseId: string, docId: string) => void;
   unlockLocation: (caseId: string, locId: string) => void;
   discoverTimeline: (caseId: string, eventId: string) => void;
@@ -63,6 +71,33 @@ function ensureGuestId(): string {
     localStorage.setItem("casefiles_guest", id);
   }
   return id;
+}
+
+function applyLeadUnlock(
+  state: InvestigationState,
+  lead: EvidenceUnlockLead,
+  caseData: ReturnType<typeof getCaseById>
+): InvestigationState {
+  if (!caseData) return state;
+
+  let updated = discoverEvidence(state, lead.evidenceId);
+  const solvedLeads = updated.solvedLeads ?? [];
+  if (!solvedLeads.includes(lead.id)) {
+    updated = { ...updated, solvedLeads: [...solvedLeads, lead.id] };
+  }
+
+  const ev = caseData.evidence.find((e) => e.id === lead.evidenceId);
+  if (ev?.documentId) {
+    updated = unlockDocument(updated, ev.documentId);
+  }
+
+  for (const tl of caseData.timeline) {
+    if (tl.evidence.includes(lead.evidenceId) && !updated.discoveredTimeline.includes(tl.id)) {
+      updated = { ...updated, discoveredTimeline: [...updated.discoveredTimeline, tl.id] };
+    }
+  }
+
+  return updated;
 }
 
 export const useGameStore = create<GameStore>()(
@@ -107,6 +142,60 @@ export const useGameStore = create<GameStore>()(
             },
           };
         });
+      },
+
+      solveLeadAnswer: (caseId, leadId, optionIndex) => {
+        const caseData = getCaseById(caseId);
+        if (!caseData) return { correct: false };
+
+        const inv = get().investigations[caseId];
+        if (!inv) return { correct: false };
+
+        const lead = getLeadsForCase(caseId).find((l) => l.id === leadId);
+        if (!lead) return { correct: false };
+
+        const correct = validateLeadAnswer(lead, optionIndex);
+        if (!correct) return { correct: false };
+
+        const evidenceTitle = caseData.evidence.find((e) => e.id === lead.evidenceId)?.title;
+
+        set((s) => {
+          const current = s.investigations[caseId];
+          if (!current) return s;
+          return {
+            investigations: {
+              ...s.investigations,
+              [caseId]: applyLeadUnlock(current, lead, caseData),
+            },
+          };
+        });
+
+        return { correct: true, evidenceTitle };
+      },
+
+      tryInterrogationUnlock: (caseId, suspectId, question) => {
+        const caseData = getCaseById(caseId);
+        const inv = get().investigations[caseId];
+        if (!caseData || !inv) return null;
+
+        const state = { ...inv, solvedLeads: inv.solvedLeads ?? [] };
+        const lead = matchInterrogationUnlock(caseData, state, suspectId, question);
+        if (!lead) return null;
+
+        const evidenceTitle = caseData.evidence.find((e) => e.id === lead.evidenceId)?.title ?? null;
+
+        set((s) => {
+          const current = s.investigations[caseId];
+          if (!current) return s;
+          return {
+            investigations: {
+              ...s.investigations,
+              [caseId]: applyLeadUnlock(current, lead, caseData),
+            },
+          };
+        });
+
+        return evidenceTitle;
       },
 
       unlockDocument: (caseId, docId) => {
@@ -274,15 +363,8 @@ export const useGameStore = create<GameStore>()(
           }
           for (const eid of loc.evidenceIds) {
             const ev = caseData.evidence.find((e) => e.id === eid);
-            if (ev && (ev.discoveredByDefault || !ev.hidden)) {
+            if (ev && (ev.discoveredByDefault || (!ev.hidden && !getLeadsForCase(caseId).some((l) => l.evidenceId === eid)))) {
               updated = discoverEvidence(updated, eid);
-            } else if (ev?.hidden && updated.searchesCompleted.includes(locationId)) {
-              updated = discoverEvidence(updated, eid);
-            }
-          }
-          for (const ev of caseData.evidence) {
-            if (ev.hidden && ev.unlockCondition?.toLowerCase().includes("search")) {
-              updated = discoverEvidence(updated, ev.id);
             }
           }
           for (const doc of caseData.documents) {
@@ -304,17 +386,7 @@ export const useGameStore = create<GameStore>()(
           };
           const caseData = getCaseById(caseId);
           if (caseData) {
-            let state = updated;
-            for (const ev of caseData.evidence) {
-              if (
-                ev.hidden &&
-                ev.unlockCondition &&
-                (ev.unlockCondition.toLowerCase().includes("warrant") ||
-                  ev.unlockCondition.toLowerCase().includes(target.toLowerCase()))
-              ) {
-                state = discoverEvidence(state, ev.id);
-              }
-            }
+            const state = updated;
             for (const doc of caseData.documents) {
               if (doc.classified) {
                 state.unlockedDocuments = [...state.unlockedDocuments, doc.id];
@@ -385,6 +457,14 @@ export const useGameStore = create<GameStore>()(
       onRehydrateStorage: () => (state) => {
         if (state && !state.guestId) {
           state.guestId = ensureGuestId();
+        }
+        if (state?.investigations) {
+          for (const caseId of Object.keys(state.investigations)) {
+            const inv = state.investigations[caseId];
+            if (inv && !inv.solvedLeads) {
+              inv.solvedLeads = [];
+            }
+          }
         }
       },
     }

@@ -65,6 +65,7 @@ export function createInitialState(caseId: string, caseData: InvestigationCase):
     contradictionsFound: [],
     warrantsRequested: [],
     searchesCompleted: [],
+    solvedLeads: [],
     theoryNotes: "",
     chargesheetSubmitted: false,
     completed: false,

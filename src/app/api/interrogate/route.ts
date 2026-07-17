@@ -15,6 +15,7 @@ interface InvestigationSnapshot {
   discoveredTimeline?: string[];
   contradictionsFound?: string[];
   questionsAsked?: number;
+  solvedLeads?: string[];
 }
 
 function buildInvestigationState(
@@ -40,6 +41,7 @@ function buildInvestigationState(
     contradictionsFound: snapshot?.contradictionsFound ?? [],
     warrantsRequested: [],
     searchesCompleted: [],
+    solvedLeads: snapshot?.solvedLeads ?? [],
     theoryNotes: "",
     chargesheetSubmitted: false,
     completed: false,
